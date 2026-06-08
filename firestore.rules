@@ -55,11 +55,21 @@ service cloud.firestore {
       allow update: if isValidId(userId) && isValidUser(incoming()) && (
         isAdmin() ||
         (
-          isOwner(userId) &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'pix_key', 'updatedAt']) &&
-          incoming().role == existing().role &&
-          incoming().balance == existing().balance &&
-          incoming().createdAt == existing().createdAt
+          isOwner(userId) && (
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'pix_key', 'updatedAt']) &&
+              incoming().role == existing().role &&
+              incoming().balance == existing().balance &&
+              incoming().createdAt == existing().createdAt
+            ) ||
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['balance']) &&
+              existing().balance >= 5 &&
+              incoming().balance == existing().balance - 5 &&
+              incoming().role == existing().role &&
+              incoming().createdAt == existing().createdAt
+            )
+          )
         )
       );
     }
