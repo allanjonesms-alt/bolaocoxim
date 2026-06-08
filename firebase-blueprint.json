@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user in the system.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "pix_key": { "type": "string" },
+        "balance": { "type": "number" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "name", "balance", "role", "createdAt"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A World Cup match.",
+      "type": "object",
+      "properties": {
+        "team1": { "type": "string" },
+        "team2": { "type": "string" },
+        "flag1": { "type": "string" },
+        "flag2": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["open", "betting_closed", "finished"] },
+        "result1": { "type": "number" },
+        "result2": { "type": "number" },
+        "poolTotal": { "type": "number" }
+      },
+      "required": ["team1", "team2", "flag1", "flag2", "date", "status", "poolTotal"]
+    },
+    "Bet": {
+      "title": "Bet",
+      "description": "A bet placed by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "matchId": { "type": "string" },
+        "predicted1": { "type": "number" },
+        "predicted2": { "type": "number" },
+        "status": { "type": "string", "enum": ["confirmed", "pending"] },
+        "amount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "matchId", "predicted1", "predicted2", "status", "amount", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "bet", "prize"] },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "amount", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "Users of the platform."
+    },
+    "matches/{matchId}": {
+      "schema": { "$ref": "Match" },
+      "description": "Matches available for betting."
+    },
+    "bets/{betId}": {
+      "schema": { "$ref": "Bet" },
+      "description": "Bets placed by users."
+    },
+    "transactions/{transactionId}": {
+      "schema": { "$ref": "Transaction" },
+      "description": "Transactions for deposits, withdrawals, and bets."
+    }
+  }
+}

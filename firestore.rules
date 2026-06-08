@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email.matches('allanjonesms.*@gmail[.]com') || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    match /admins/{adminId} {
+      allow read: if isOwner(adminId) || isAdmin();
+    }
+
+    // Users
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'balance', 'role', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 200
+        && data.balance is number
+        && data.role in ['user', 'admin']
+        && (data.get('phone', '') is string)
+        && (data.get('pix_key', '') is string);
+    }
+    
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) 
+        && isValidUser(incoming()) 
+        && incoming().balance == 0
+        && (incoming().role == 'user' || (incoming().role == 'admin' && isAdmin()))
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(userId) && isValidUser(incoming()) && (
+        isAdmin() ||
+        (
+          isOwner(userId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'pix_key', 'updatedAt']) &&
+          incoming().role == existing().role &&
+          incoming().balance == existing().balance &&
+          incoming().createdAt == existing().createdAt
+        )
+      );
+    }
+
+    // Matches
+    function isValidMatch(data) {
+      return data.keys().hasAll(['team1', 'team2', 'flag1', 'flag2', 'date', 'status', 'poolTotal'])
+        && data.team1 is string && data.team1.size() > 0 && data.team1.size() <= 100
+        && data.team2 is string && data.team2.size() > 0 && data.team2.size() <= 100
+        && data.flag1 is string && data.flag1.size() <= 200000
+        && data.flag2 is string && data.flag2.size() <= 200000
+        && data.date is string && data.date.size() <= 50
+        && data.status in ['open', 'betting_closed', 'finished']
+        && data.poolTotal is number
+        && (data.get('result1', 0) is number)
+        && (data.get('result2', 0) is number);
+    }
+
+    match /matches/{matchId} {
+      allow get: if isValidId(matchId) && isSignedIn();
+      allow list: if isSignedIn(); // All authenticated users can list matches
+      allow create: if isAdmin() && isValidMatch(incoming()) && incoming().poolTotal == 0;
+      allow update: if isValidId(matchId) && isValidMatch(incoming()) && (
+        isAdmin() ||
+        (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['poolTotal']))
+      );
+      allow delete: if isValidId(matchId) && isAdmin();
+    }
+
+    // Bets
+    function isValidBet(data) {
+      return data.keys().hasAll(['userId', 'userName', 'matchId', 'predicted1', 'predicted2', 'amount', 'createdAt', 'status'])
+        && data.userId is string && data.userId == request.auth.uid
+        && data.userName is string && data.userName.size() <= 100
+        && data.matchId is string && data.matchId.size() <= 128
+        && data.predicted1 is number && data.predicted1 >= 0
+        && data.predicted2 is number && data.predicted2 >= 0
+        && data.amount is number
+        && data.status in ['confirmed', 'pending']
+        && data.createdAt == request.time
+        && (data.get('is_winner', false) is bool)
+        && (data.get('prize_collected', 0) is number)
+        && (data.get('points', 0) is number);
+    }
+
+    match /bets/{betId} {
+      allow get: if isValidId(betId) && isSignedIn();
+      allow list: if isSignedIn(); // All users can list bets for a match
+      allow create: if isSignedIn() && isValidBet(incoming()) &&
+        // ensure match exists and is open
+        get(/databases/$(database)/documents/matches/$(incoming().matchId)).data.status == 'open';
+      allow update: if isValidId(betId) && (
+        isAdmin() ||
+        (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+    }
+
+    // Transactions
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'type', 'amount', 'status', 'timestamp'])
+        && data.userId is string
+        && data.type in ['deposit', 'withdrawal', 'bet', 'prize']
+        && data.amount is number
+        && data.status in ['pending', 'confirmed']
+        && data.timestamp == request.time;
+    }
+
+    match /transactions/{transactionId} {
+      allow get: if (isOwner(existing().userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isValidTransaction(incoming()) && (
+        (isOwner(incoming().userId) && incoming().status == 'pending' && incoming().type in ['deposit', 'withdrawal']) ||
+        isAdmin() ||
+        (isOwner(incoming().userId) && incoming().type == 'bet' && incoming().status == 'confirmed')
+      );
+      allow update: if isValidTransaction(incoming()) && isAdmin();
+    }
+  }
+}
