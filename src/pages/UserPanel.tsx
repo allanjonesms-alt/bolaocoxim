@@ -117,72 +117,72 @@ export default function UserPanel() {
   if (!profile) return null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <h1 className="text-3xl font-display font-bold text-white tracking-tight">Painel do Usuário</h1>
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+      <h1 className="text-3xl font-display font-bold text-slate-800 tracking-tight">Painel do Usuário</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
-        <div className="bg-slate-900 rounded-3xl shadow-xl border border-white/5 p-8 md:col-span-1 flex flex-col items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[50px] pointer-events-none"></div>
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 md:col-span-1 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[50px] pointer-events-none"></div>
           
-          <div className="h-24 w-24 bg-slate-800 border-2 border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center text-4xl font-display font-bold mb-5 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative z-10">
+          <div className="h-24 w-24 bg-emerald-50 border-2 border-emerald-500/25 text-emerald-600 rounded-full flex items-center justify-center text-4xl font-display font-bold mb-5 shadow-sm relative z-10">
             {profile.name.charAt(0).toUpperCase()}
           </div>
-          <h2 className="text-xl font-display font-bold text-white relative z-10">{profile.name}</h2>
+          <h2 className="text-xl font-display font-bold text-slate-800 relative z-10">{profile.name}</h2>
           <p className="text-slate-500 text-sm mb-8 font-medium relative z-10">{profile.email}</p>
           
           <button 
             id="balance-button-userpanel"
             onClick={() => setShowFinanceModal(true)}
-            className="w-full bg-slate-950/50 hover:bg-slate-900/80 p-5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all flex flex-col items-center relative z-10 group cursor-pointer focus:outline-none"
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-5 rounded-2xl border border-slate-200 hover:border-emerald-500/30 transition-all flex flex-col items-center relative z-10 group cursor-pointer focus:outline-none"
           >
-            <span className="text-sm font-semibold text-slate-400 group-hover:text-emerald-400 transition-colors uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Wallet className="h-4 w-4" /> Saldo Disponível
+            <span className="text-sm font-semibold text-slate-555 group-hover:text-emerald-700 transition-colors uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Wallet className="h-4 w-4 text-emerald-600" /> Saldo Disponível
             </span>
-            <span className="text-4xl font-bold text-emerald-400 font-mono group-hover:scale-105 transition-transform duration-200">
+            <span className="text-4xl font-bold text-emerald-700 font-mono group-hover:scale-105 transition-transform duration-200">
               R$ {profile.balance.toFixed(2)}
             </span>
-            <span className="text-[10px] text-slate-500 mt-2 group-hover:text-slate-400 transition-colors">
+            <span className="text-[10px] text-slate-400 mt-2 group-hover:text-slate-500 transition-colors">
               Clique para depositar ou sacar
             </span>
           </button>
         </div>
 
         {/* Banking Controls */}
-        <div className="bg-slate-900 rounded-3xl shadow-xl border border-white/5 p-8 md:col-span-2 flex flex-col relative overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 md:col-span-2 flex flex-col relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-[60px] pointer-events-none"></div>
           
-          <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center relative z-10">
-            <Wallet className="h-6 w-6 mr-3 text-slate-400" />
+          <h3 className="text-xl font-display font-bold text-slate-850 mb-6 flex items-center relative z-10">
+            <Wallet className="h-6 w-6 mr-3 text-slate-500" />
             Movimentação Financeira
           </h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 relative z-10">
             {/* Deposit */}
-            <div className="bg-slate-950/50 border border-emerald-500/20 rounded-2xl p-6 flex flex-col shadow-inner">
-              <h4 className="font-bold text-white mb-2 flex items-center text-lg">
-                <ArrowDownToLine className="h-5 w-5 mr-2 text-emerald-400" /> Depositar
+            <div className="bg-slate-50/60 border border-emerald-100/85 rounded-2xl p-6 flex flex-col shadow-inner">
+              <h4 className="font-bold text-slate-800 mb-2 flex items-center text-lg">
+                <ArrowDownToLine className="h-5 w-5 mr-2 text-emerald-600" /> Depositar
               </h4>
-              <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Adicione créditos para fazer apostas. Suas apostas pendentes serão confirmadas automaticamente.</p>
+              <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">Adicione créditos para fazer apostas. Suas apostas pendentes serão confirmadas automaticamente.</p>
               
               {!showPix ? (
                 <div className="mt-auto space-y-4">
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                     <input 
                       type="number" 
                       value={depositAmount} 
                       onChange={e => setDepositAmount(e.target.value)} 
-                      className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-white font-mono"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/35 text-slate-800 font-mono font-semibold"
                       placeholder="0.00"
                     />
                   </div>
-                  <button onClick={handleDepositRequest} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-3.5 transition-colors shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  <button onClick={handleDepositRequest} className="w-full bg-emerald-605 hover:bg-emerald-705 text-white font-bold rounded-xl py-3.5 transition-colors shadow-md shadow-emerald-500/10 cursor-pointer">
                     Gerar PIX
                   </button>
                 </div>
               ) : (
-                <div className="mt-auto flex flex-col items-center bg-white p-5 rounded-xl border border-emerald-500/30 relative">
+                <div className="mt-auto flex flex-col items-center bg-white p-5 rounded-xl border border-emerald-100 relative shadow-sm">
                   <img 
                     src="https://lh3.googleusercontent.com/d/1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf" 
                     alt="PIX QR Code" 
@@ -192,7 +192,7 @@ export default function UserPanel() {
                       (e.target as HTMLImageElement).src = "https://docs.google.com/uc?export=download&id=1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf";
                     }}
                   />
-                  <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                  <p className="text-xs text-center text-slate-600 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
                   
                   {/* Pix Copia e Cola */}
                   <div className="w-full mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col text-left">
@@ -210,7 +210,7 @@ export default function UserPanel() {
                         className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0 ${
                           copiedPix 
                             ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         }`}
                         title="Copiar Código Pix"
                       >
@@ -222,13 +222,13 @@ export default function UserPanel() {
 
                   <button 
                     onClick={handleConfirmPayment}
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
                   >
                     EFETUEI O PAGAMENTO
                   </button>
                   <button 
                     onClick={() => setShowPix(false)} 
-                    className="text-xs font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider"
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider cursor-pointer"
                   >
                     Cancelar
                   </button>
@@ -237,33 +237,33 @@ export default function UserPanel() {
             </div>
 
             {/* Withdraw */}
-            <div className="bg-slate-950/50 border border-white/10 rounded-2xl p-6 flex flex-col shadow-inner">
-              <h4 className="font-bold text-white mb-2 flex items-center text-lg">
-                <ArrowUpFromLine className="h-5 w-5 mr-2 text-slate-400" /> Sacar
+            <div className="bg-slate-50/60 border border-slate-200 rounded-2xl p-6 flex flex-col shadow-inner">
+              <h4 className="font-bold text-slate-800 mb-2 flex items-center text-lg">
+                <ArrowUpFromLine className="h-5 w-5 mr-2 text-slate-555" /> Sacar
               </h4>
-              <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Solicite o saque do seu saldo. O administrador fará a transferência para sua chave PIX.</p>
+              <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">Solicite o saque do seu saldo. O administrador fará a transferência para sua chave PIX.</p>
               
               {!requestWithdraw ? (
-                <button onClick={() => setRequestWithdraw(true)} className="mt-auto w-full bg-slate-800 hover:bg-slate-700 text-white border border-white/5 rounded-xl py-3.5 font-bold transition-colors">
+                <button onClick={() => setRequestWithdraw(true)} className="mt-auto w-full bg-slate-150 hover:bg-slate-250 text-slate-700 border border-slate-200/80 rounded-xl py-3.5 font-bold transition-colors cursor-pointer">
                   Solicitar Saque
                 </button>
               ) : (
                 <div className="mt-auto space-y-4">
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                     <input 
                       type="number" 
                       value={withdrawAmount} 
                       onChange={e => setWithdrawAmount(e.target.value)} 
-                      className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-white font-mono"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/35 text-slate-800 font-mono font-semibold"
                       placeholder="0.00"
                     />
                   </div>
                   <div className="flex space-x-3">
-                    <button onClick={handleWithdrawRequest} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-3.5 transition-colors">
+                    <button onClick={handleWithdrawRequest} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3.5 transition-colors cursor-pointer">
                       Confirmar
                     </button>
-                    <button onClick={() => setRequestWithdraw(false)} className="px-5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors border border-white/5">
+                    <button onClick={() => setRequestWithdraw(false)} className="px-5 bg-slate-200 hover:bg-slate-300 text-slate-705 rounded-xl font-bold transition-colors border border-slate-250 cursor-pointer">
                       Sair
                     </button>
                   </div>
@@ -276,49 +276,49 @@ export default function UserPanel() {
 
       {/* History Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-slate-900 rounded-3xl shadow-xl border border-white/5 p-8 relative overflow-hidden">
-          <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center">
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">
+          <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
             Minhas Apostas
           </h3>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {bets.length === 0 ? <p className="text-sm text-slate-500 font-medium text-center py-8">Nenhuma aposta realizada.</p> : bets.map(bet => {
+            {bets.length === 0 ? <p className="text-sm text-slate-400 font-medium text-center py-8">Nenhuma aposta realizada.</p> : bets.map(bet => {
               const m = matches.find(match => match.id === bet.matchId);
               return (
-                <div key={bet.id} className="bg-slate-950/50 border border-white/5 rounded-2xl p-4 flex justify-between items-center hover:border-white/10 transition-colors">
+                <div key={bet.id} className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex justify-between items-center hover:border-slate-250 transition-colors">
                   <div>
                     {m && (
-                      <div className="text-xs text-slate-400 font-medium mb-1.5 flex items-center gap-1.5">
+                      <div className="text-xs text-slate-505 font-semibold mb-1.5 flex items-center gap-1.5">
                         <span>{m.team1}</span>
                         {m.flag1?.startsWith('http') || m.flag1?.startsWith('data:') ? (
-                          <img src={m.flag1} alt={m.team1} className="w-4 h-2.5 object-cover rounded-sm border border-white/10" referrerPolicy="no-referrer" />
+                          <img src={m.flag1} alt={m.team1} className="w-4 h-2.5 object-cover rounded-sm border border-slate-100" referrerPolicy="no-referrer" />
                         ) : (
                           <span>{m.flag1}</span>
                         )}
-                        <span className="text-slate-600">vs</span>
+                        <span className="text-slate-400 font-bold">vs</span>
                         {m.flag2?.startsWith('http') || m.flag2?.startsWith('data:') ? (
-                          <img src={m.flag2} alt={m.team2} className="w-4 h-2.5 object-cover rounded-sm border border-white/10" referrerPolicy="no-referrer" />
+                          <img src={m.flag2} alt={m.team2} className="w-4 h-2.5 object-cover rounded-sm border border-slate-100" referrerPolicy="no-referrer" />
                         ) : (
                           <span>{m.flag2}</span>
                         )}
                         <span>{m.team2}</span>
                       </div>
                     )}
-                    <div className="text-white font-bold text-lg font-mono mb-1">Palpite: {bet.predicted1} <span className="text-slate-600">x</span> {bet.predicted2}</div>
+                    <div className="text-slate-800 font-extrabold text-lg font-mono mb-1">Palpite: {bet.predicted1} <span className="text-slate-400">x</span> {bet.predicted2}</div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <div className="text-[10px] font-bold uppercase tracking-wider bg-slate-950 px-2 py-0.5 rounded border border-white/5">
+                      <div className="text-[10px] font-bold uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-200">
                         Status: 
-                        <span className={bet.status === 'pending' ? 'text-orange-400 ml-1 font-bold' : 'text-emerald-400 ml-1 font-bold'}>
+                        <span className={bet.status === 'pending' ? 'text-orange-500 ml-1 font-bold' : 'text-emerald-700 ml-1 font-extrabold'}>
                           {bet.status === 'pending' ? 'Pendente' : 'Confirmada'}
                         </span>
                       </div>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${bet.paid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${bet.paid ? 'bg-emerald-50 text-emerald-705 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
                         {bet.paid ? 'Pago' : 'Sem Saldo'}
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Aposta</div>
-                    <div className="text-base font-bold font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">R$ {bet.amount.toFixed(2)}</div>
+                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Aposta</div>
+                    <div className="text-base font-extrabold font-mono text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">R$ {bet.amount.toFixed(2)}</div>
                   </div>
                 </div>
               );
@@ -326,57 +326,57 @@ export default function UserPanel() {
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-3xl shadow-xl border border-white/5 p-8 relative overflow-hidden">
-          <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center">
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">
+          <h3 className="text-xl font-display font-bold text-slate-850 mb-6 flex items-center">
             Histórico de Transações
           </h3>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {transactions.length === 0 ? <p className="text-sm text-slate-500 font-medium text-center py-8">Nenhuma transação.</p> : transactions.map(t => (
-              <div key={t.id} className="bg-slate-950/50 border border-white/5 rounded-2xl p-4 flex justify-between items-center hover:border-white/10 transition-colors">
+            {transactions.length === 0 ? <p className="text-sm text-slate-400 font-medium text-center py-8">Nenhuma transação.</p> : transactions.map(t => (
+              <div key={t.id} className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex justify-between items-center hover:border-slate-250 transition-colors">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-xl mr-4 ${
+                  <div className={`p-3 rounded-xl mr-4 border ${
                     t.status === 'pending' 
-                      ? 'bg-orange-500/10 border border-orange-500/20' 
+                      ? 'bg-orange-50 border-orange-200' 
                       : t.status === 'rejected'
-                      ? 'bg-red-500/10 border border-red-500/20'
-                      : 'bg-emerald-500/10 border border-emerald-500/20'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-emerald-50 border-emerald-100'
                   }`}>
                     {t.status === 'pending' ? (
-                      <Clock className="h-5 w-5 text-orange-400" />
+                      <Clock className="h-5 w-5 text-orange-600" />
                     ) : t.status === 'rejected' ? (
-                      <X className="h-5 w-5 text-red-500" />
+                      <X className="h-5 w-5 text-red-650" />
                     ) : (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      <CheckCircle2 className="h-5 w-5 text-emerald-650" />
                     )}
                   </div>
                   <div>
-                    <div className="text-white font-bold capitalize text-base tracking-wide flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="text-slate-805 font-extrabold capitalize text-base tracking-wide flex flex-col sm:flex-row sm:items-center gap-2">
                       <span>
                         {t.type === 'deposit' ? 'Depósito' : 
                          t.type === 'withdrawal' ? 'Saque' : 
                          t.type === 'prize' ? 'Prêmio Recebido' : 'Aposta'}
                       </span>
                       {t.status === 'pending' && t.type === 'deposit' && (
-                        <span className="text-[10px] uppercase font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full inline-block">
-                          PENDENTE (Até aprovação do admin)
+                        <span className="text-[10px] uppercase font-bold text-orange-650 bg-orange-55 border border-orange-200 px-2.5 py-0.5 rounded-full inline-block">
+                          PENDENTE (Aprovação do admin)
                         </span>
                       )}
                       {t.status === 'pending' && t.type === 'withdrawal' && (
-                        <span className="text-[10px] uppercase font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full inline-block">
+                        <span className="text-[10px] uppercase font-bold text-amber-800 bg-yellow-50 border border-yellow-200 px-2.5 py-0.5 rounded-full inline-block">
                           Aguardando Saque
                         </span>
                       )}
                       {t.status === 'rejected' && (
-                        <span className="text-[10px] uppercase font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full inline-block">
-                          Recusada pelo Administrador
+                        <span className="text-[10px] uppercase font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full inline-block">
+                          Recusada
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1 font-medium">{new Date(t.timestamp).toLocaleDateString()}</div>
+                    <div className="text-xs text-slate-450 mt-1 font-semibold">{new Date(t.timestamp).toLocaleDateString()}</div>
                   </div>
                 </div>
                 <div className={`text-lg font-mono font-bold px-3 py-1 rounded-lg border ${
-                  ['deposit', 'prize'].includes(t.type) ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-300 bg-slate-800 border-white/5'
+                  ['deposit', 'prize'].includes(t.type) ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-slate-655 bg-slate-100 border border-slate-205'
                 }`}>
                   {['deposit', 'prize'].includes(t.type) ? '+' : '-'} R$ {t.amount.toFixed(2)}
                 </div>
@@ -388,47 +388,47 @@ export default function UserPanel() {
 
       {/* Finance Movement Modal */}
       {showFinanceModal && (
-        <div id="finance-modal" className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-slate-900 rounded-3xl border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative p-6 sm:p-8">
+        <div id="finance-modal" className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative p-6 sm:p-8">
             <button 
               onClick={() => setShowFinanceModal(false)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-white transition p-2 bg-white/5 rounded-full hover:bg-white/10"
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-650 transition p-2 bg-slate-105 rounded-full hover:bg-slate-200 cursor-pointer"
               title="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
             
-            <h3 className="text-2xl font-display font-bold text-white mb-6 flex items-center">
-              <Wallet className="h-7 w-7 mr-3 text-emerald-400" />
+            <h3 className="text-2xl font-display font-bold text-slate-800 mb-6 flex items-center">
+              <Wallet className="h-7 w-7 mr-3 text-emerald-600" />
               Movimentação Financeira
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Deposit */}
-              <div className="bg-slate-950/50 border border-emerald-500/20 rounded-2xl p-6 flex flex-col shadow-inner">
-                <h4 className="font-bold text-white mb-2 flex items-center text-lg">
-                  <ArrowDownToLine className="h-5 w-5 mr-2 text-emerald-400" /> Depositar
+              <div className="bg-slate-50/60 border border-emerald-100/85 rounded-2xl p-6 flex flex-col shadow-inner">
+                <h4 className="font-bold text-slate-800 mb-2 flex items-center text-lg">
+                  <ArrowDownToLine className="h-5 w-5 mr-2 text-emerald-600" /> Depositar
                 </h4>
-                <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Adicione créditos para fazer apostas. Suas apostas pendentes serão confirmadas automaticamente.</p>
+                <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">Adicione créditos para fazer apostas. Suas apostas pendentes serão confirmadas automaticamente.</p>
                 
                 {!showPix ? (
                   <div className="mt-auto space-y-4">
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                       <input 
                         type="number" 
                         value={depositAmount} 
                         onChange={e => setDepositAmount(e.target.value)} 
-                        className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-white font-mono"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/35 text-slate-850 font-mono font-bold"
                         placeholder="0.00"
                       />
                     </div>
-                    <button onClick={handleDepositRequest} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-3.5 transition-colors shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                    <button onClick={handleDepositRequest} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3.5 transition-colors shadow-md shadow-emerald-550/10 cursor-pointer">
                       Gerar PIX
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-auto flex flex-col items-center bg-white p-5 rounded-xl border border-emerald-500/30 relative animate-fade-in animate-duration-300">
+                  <div className="mt-auto flex flex-col items-center bg-white p-5 rounded-xl border border-emerald-100 relative animate-fade-in shadow-sm">
                     <img 
                       src="https://lh3.googleusercontent.com/d/1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf" 
                       alt="PIX QR Code" 
@@ -438,7 +438,7 @@ export default function UserPanel() {
                         (e.target as HTMLImageElement).src = "https://docs.google.com/uc?export=download&id=1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf";
                       }}
                     />
-                    <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                    <p className="text-xs text-center text-slate-700 font-semibold mb-3">Escaneie o QR Code no seu app de banco.</p>
                     
                     {/* Pix Copia e Cola */}
                     <div className="w-full mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col text-left">
@@ -456,7 +456,7 @@ export default function UserPanel() {
                           className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0 ${
                             copiedPix 
                               ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                           }`}
                           title="Copiar Código Pix"
                         >
@@ -468,13 +468,13 @@ export default function UserPanel() {
 
                     <button 
                       onClick={handleConfirmPayment}
-                      className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
                     >
                       EFETUEI O PAGAMENTO
                     </button>
                     <button 
                       onClick={() => setShowPix(false)} 
-                      className="text-xs font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider"
+                      className="text-xs font-bold text-slate-400 hover:text-slate-650 uppercase tracking-wider cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -483,33 +483,33 @@ export default function UserPanel() {
               </div>
 
               {/* Withdraw */}
-              <div className="bg-slate-950/50 border border-white/10 rounded-2xl p-6 flex flex-col shadow-inner">
-                <h4 className="font-bold text-white mb-2 flex items-center text-lg">
-                  <ArrowUpFromLine className="h-5 w-5 mr-2 text-slate-400" /> Sacar
+              <div className="bg-slate-50/60 border border-slate-200 rounded-2xl p-6 flex flex-col shadow-inner">
+                <h4 className="font-bold text-slate-800 mb-2 flex items-center text-lg">
+                  <ArrowUpFromLine className="h-5 w-5 mr-2 text-slate-505" /> Sacar
                 </h4>
-                <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed">Solicite o saque do seu saldo. O administrador fará a transferência para sua chave PIX.</p>
+                <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">Solicite o saque do seu saldo. O administrador fará a transferência para sua chave PIX.</p>
                 
                 {!requestWithdraw ? (
-                  <button onClick={() => setRequestWithdraw(true)} className="mt-auto w-full bg-slate-800 hover:bg-slate-700 text-white border border-white/5 rounded-xl py-3.5 font-bold transition-colors">
+                  <button onClick={() => setRequestWithdraw(true)} className="mt-auto w-full bg-slate-200 hover:bg-slate-250 text-slate-700 border border-slate-250 rounded-xl py-3.5 font-bold transition-colors cursor-pointer">
                     Solicitar Saque
                   </button>
                 ) : (
                   <div className="mt-auto space-y-4">
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                       <input 
                         type="number" 
                         value={withdrawAmount} 
                         onChange={e => setWithdrawAmount(e.target.value)} 
-                        className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/50 text-white font-mono"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/35 text-slate-800 font-mono font-semibold"
                         placeholder="0.00"
                       />
                     </div>
                     <div className="flex space-x-3">
-                      <button onClick={handleWithdrawRequest} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-3.5 transition-colors">
+                      <button onClick={handleWithdrawRequest} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3.5 transition-colors cursor-pointer">
                         Confirmar
                       </button>
-                      <button onClick={() => setRequestWithdraw(false)} className="px-5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors border border-white/5">
+                      <button onClick={() => setRequestWithdraw(false)} className="px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition-colors border border-slate-250 cursor-pointer">
                         Sair
                       </button>
                     </div>
@@ -521,7 +521,7 @@ export default function UserPanel() {
             <div className="mt-8 flex justify-end">
               <button 
                 onClick={() => setShowFinanceModal(false)}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold border border-white/5 transition duration-150"
+                className="bg-slate-150 hover:bg-slate-250 text-slate-705 px-6 py-2.5 rounded-xl text-sm font-bold border border-slate-250 transition duration-150 cursor-pointer"
               >
                 Fechar
               </button>
