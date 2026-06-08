@@ -14,40 +14,40 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col font-sans text-slate-200">
-      <header className="bg-slate-900 border-b border-white/5 sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+      <header className="bg-emerald-900 shadow-md border-b-2 border-yellow-400 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
             <Link to="/" className="flex items-center space-x-3 group">
-              <div className="bg-emerald-500/10 p-2 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
-                <Trophy className="h-6 w-6 text-emerald-400" />
+              <div className="bg-yellow-400/10 p-2 rounded-lg group-hover:bg-yellow-400/20 transition-colors border border-yellow-400/20">
+                <Trophy className="h-6 w-6 text-yellow-400" />
               </div>
-              <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">BOLÃO COXIM <span className="text-emerald-400">2026</span></span>
+              <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">BOLÃO COXIM <span className="text-yellow-400">2026</span></span>
             </Link>
 
             {profile && (
               <div className="flex items-center space-x-4 sm:space-x-6">
-                <Link to="/" className="text-slate-400 hover:text-emerald-400 transition" title="Início">
+                <Link to="/" className="text-emerald-100 hover:text-yellow-400 transition" title="Início">
                   <Home className="h-5 w-5" />
                 </Link>
                 <Link to="/panel?openFinance=true" className="flex flex-col items-end group transition" title="Depositar ou Sacar">
-                  <span className="text-sm font-medium text-slate-200 group-hover:text-emerald-400 transition">{profile.name}</span>
-                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full mt-0.5 font-mono font-medium border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] group-hover:bg-emerald-500/20 transition-all duration-200">
+                  <span className="text-sm font-medium text-emerald-50 group-hover:text-yellow-400 transition">{profile.name}</span>
+                  <span className="text-xs text-yellow-300 bg-white/10 px-2.5 py-0.5 rounded-full mt-0.5 font-mono font-medium border border-yellow-400/20 shadow-inner group-hover:bg-white/20 transition-all duration-200">
                     R$ {profile.balance.toFixed(2)}
                   </span>
                 </Link>
                 
-                <Link to="/panel" className="text-slate-400 hover:text-emerald-400 transition" title="Painel do Usuário">
+                <Link to="/panel" className="text-emerald-100 hover:text-yellow-400 transition" title="Painel do Usuário">
                   <User className="h-5 w-5" />
                 </Link>
                 
                 {profile.role === 'admin' && (
-                  <Link to="/admin" className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 px-3 py-1.5 rounded-md text-sm transition font-medium">
+                  <Link to="/admin" className="text-yellow-300 bg-emerald-800/80 border border-yellow-400/30 hover:bg-emerald-800 px-3 py-1.5 rounded-md text-sm transition font-medium">
                     Admin
                   </Link>
                 )}
                 
-                <button onClick={handleLogout} className="text-slate-400 hover:text-red-400 transition ml-2" title="Sair">
+                <button onClick={handleLogout} className="text-emerald-200 hover:text-rose-300 transition ml-2 cursor-pointer" title="Sair">
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
@@ -60,10 +60,10 @@ export default function Layout() {
         <Outlet />
       </main>
       
-      <footer className="bg-slate-900 border-t border-white/5 text-slate-500 py-8 text-center text-sm">
+      <footer className="bg-emerald-950 border-t border-emerald-900 text-emerald-1050/60 py-8 text-center text-sm">
         <div className="max-w-7xl mx-auto px-4 flex flex-col items-center">
-          <Trophy className="h-5 w-5 text-emerald-500/50 mb-3" />
-          <p>&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
+          <Trophy className="h-5 w-5 text-yellow-400/60 mb-3" />
+          <p className="text-emerald-100/70">&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
         </div>
       </footer>
     </div>
