@@ -2,7 +2,7 @@ export type Role = 'user' | 'admin';
 export type MatchStatus = 'open' | 'betting_closed' | 'finished';
 export type BetStatus = 'confirmed' | 'pending';
 export type TransactionType = 'deposit' | 'withdrawal' | 'bet' | 'prize';
-export type TransactionStatus = 'pending' | 'confirmed';
+export type TransactionStatus = 'pending' | 'confirmed' | 'rejected';
 
 export interface UserProfile {
   id: string; // Document ID
@@ -41,6 +41,7 @@ export interface Bet {
   is_winner?: boolean;
   prize_collected?: number;
   points?: number; // 5, 3, 1, or 0 based on results
+  paid?: boolean; // Track if the bet value has been deducted
 }
 
 export interface Transaction {
