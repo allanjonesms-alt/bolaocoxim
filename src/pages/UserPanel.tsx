@@ -48,7 +48,13 @@ export default function UserPanel() {
     return () => { unsubBets(); unsubTrans(); };
   }, [user]);
 
-  const handleDepositRequest = async () => {
+  const handleDepositRequest = () => {
+    const amount = parseFloat(depositAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    setShowPix(true);
+  };
+
+  const handleConfirmPayment = async () => {
     const amount = parseFloat(depositAmount);
     if (isNaN(amount) || amount <= 0) return;
     
@@ -60,7 +66,8 @@ export default function UserPanel() {
         status: 'pending',
         timestamp: serverTimestamp()
       });
-      setShowPix(true);
+      setShowPix(false);
+      alert('Seu depósito de R$ ' + amount.toFixed(2) + ' foi registrado como PENDENTE e aguarda validação do administrador!');
     } catch(err) {
       handleFirestoreError(err, OperationType.CREATE, 'transactions');
     }
@@ -167,8 +174,19 @@ export default function UserPanel() {
                       (e.target as HTMLImageElement).src = "https://docs.google.com/uc?export=download&id=1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf";
                     }}
                   />
-                  <p className="text-xs text-center text-slate-600 font-medium">Escaneie o QR Code no seu app de banco. (Simulação)</p>
-                  <button onClick={() => setShowPix(false)} className="mt-4 text-xs font-bold text-emerald-600 hover:text-emerald-500 uppercase tracking-widest">Concluído</button>
+                  <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                  <button 
+                    onClick={handleConfirmPayment}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
+                  >
+                    EFETUEI O PAGAMENTO
+                  </button>
+                  <button 
+                    onClick={() => setShowPix(false)} 
+                    className="text-xs font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider"
+                  >
+                    Cancelar
+                  </button>
                 </div>
               )}
             </div>
@@ -333,8 +351,19 @@ export default function UserPanel() {
                         (e.target as HTMLImageElement).src = "https://docs.google.com/uc?export=download&id=1b4csBjKmNy33G5G1lo3lB_Alfb-_bzkf";
                       }}
                     />
-                    <p className="text-xs text-center text-slate-600 font-medium">Escaneie o QR Code no seu app de banco. (Simulação)</p>
-                    <button onClick={() => setShowPix(false)} className="mt-4 text-xs font-bold text-emerald-600 hover:text-emerald-500 uppercase tracking-widest">Concluído</button>
+                    <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                    <button 
+                      onClick={handleConfirmPayment}
+                      className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
+                    >
+                      EFETUEI O PAGAMENTO
+                    </button>
+                    <button 
+                      onClick={() => setShowPix(false)} 
+                      className="text-xs font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 )}
               </div>
