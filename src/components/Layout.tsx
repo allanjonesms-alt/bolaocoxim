@@ -30,12 +30,12 @@ export default function Layout() {
                 <Link to="/" className="text-slate-400 hover:text-emerald-400 transition" title="Início">
                   <Home className="h-5 w-5" />
                 </Link>
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-medium text-slate-200">{profile.name}</span>
-                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full mt-0.5 font-mono font-medium border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                <Link to="/panel?openFinance=true" className="flex flex-col items-end group transition" title="Depositar ou Sacar">
+                  <span className="text-sm font-medium text-slate-200 group-hover:text-emerald-400 transition">{profile.name}</span>
+                  <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full mt-0.5 font-mono font-medium border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] group-hover:bg-emerald-500/20 transition-all duration-200">
                     R$ {profile.balance.toFixed(2)}
                   </span>
-                </div>
+                </Link>
                 
                 <Link to="/panel" className="text-slate-400 hover:text-emerald-400 transition" title="Painel do Usuário">
                   <User className="h-5 w-5" />
