@@ -18,7 +18,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email.matches('allanjonesms.*@gmail[.]com') || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      return isSignedIn() && (request.auth.token.email == 'allanjonesms@gmail.com' || request.auth.token.email.matches('allanjonesms.*@gmail[.]com') || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
     function isOwner(userId) {
@@ -26,7 +26,7 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128;
     }
 
     match /admins/{adminId} {
@@ -102,6 +102,7 @@ service cloud.firestore {
         && data.createdAt == request.time
         && (data.get('is_winner', false) is bool)
         && (data.get('prize_collected', 0) is number)
+        && (data.get('paid', false) is bool)
         && (data.get('points', 0) is number);
     }
 
@@ -115,6 +116,7 @@ service cloud.firestore {
         isAdmin() ||
         (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
       );
+      allow delete: if isValidId(betId) && isAdmin();
     }
 
     // Transactions
@@ -131,11 +133,21 @@ service cloud.firestore {
       allow get: if (isOwner(existing().userId) || isAdmin());
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
       allow create: if isSignedIn() && isValidTransaction(incoming()) && (
-        (isOwner(incoming().userId) && incoming().status == 'pending' && incoming().type in ['deposit', 'withdrawal']) ||
+        (isOwner(incoming().userId) && incoming().status == 'pending' && incoming().type in ['deposit', 'withdrawal', 'bet']) ||
         isAdmin() ||
         (isOwner(incoming().userId) && incoming().type == 'bet' && incoming().status == 'confirmed')
       );
-      allow update: if isValidTransaction(incoming()) && isAdmin();
+      allow update: if isValidId(transactionId) && (
+        (isValidTransaction(incoming()) && isAdmin()) ||
+        (isAdmin() &&
+         incoming().userId == existing().userId &&
+         incoming().type == existing().type &&
+         incoming().amount == existing().amount &&
+         incoming().timestamp == existing().timestamp &&
+         incoming().status in ['pending', 'confirmed']
+        )
+      );
+      allow delete: if isValidId(transactionId) && isAdmin();
     }
   }
 }

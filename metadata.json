@@ -1,5 +1,5 @@
 {
-  "name": "Bolão Copa 2026",
+  "name": "Bolão Coxim 2026",
   "description": "Sistema de apostas e palpites para a Copa do Mundo 2026",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
