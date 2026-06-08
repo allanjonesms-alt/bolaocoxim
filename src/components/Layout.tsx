@@ -22,7 +22,7 @@ export default function Layout() {
               <div className="bg-emerald-500/10 p-2 rounded-lg group-hover:bg-emerald-500/20 transition-colors">
                 <Trophy className="h-6 w-6 text-emerald-400" />
               </div>
-              <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">Bet<span className="text-emerald-400">2026</span></span>
+              <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">BOLÃO COXIM <span className="text-emerald-400">2026</span></span>
             </Link>
 
             {profile && (
@@ -63,7 +63,7 @@ export default function Layout() {
       <footer className="bg-slate-900 border-t border-white/5 text-slate-500 py-8 text-center text-sm">
         <div className="max-w-7xl mx-auto px-4 flex flex-col items-center">
           <Trophy className="h-5 w-5 text-emerald-500/50 mb-3" />
-          <p>&copy; 2026 Bet2026. Jogue com responsabilidade.</p>
+          <p>&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
         </div>
       </footer>
     </div>
