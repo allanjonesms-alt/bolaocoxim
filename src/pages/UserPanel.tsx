@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Bet, Transaction, Match } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X } from 'lucide-react';
+import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X, Copy, Check } from 'lucide-react';
 
 export default function UserPanel() {
   const { user, profile } = useAuth();
@@ -17,6 +17,19 @@ export default function UserPanel() {
   const [depositAmount, setDepositAmount] = useState('50');
   const [requestWithdraw, setRequestWithdraw] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [copiedPix, setCopiedPix] = useState(false);
+  
+  const pixCode = '00020126360014BR.GOV.BCB.PIX0114+55679843730395204000053039865802BR5901N6001C62140510BOLAOCOXIM63049152';
+
+  const handleCopyPix = async () => {
+    try {
+      await navigator.clipboard.writeText(pixCode);
+      setCopiedPix(true);
+      setTimeout(() => setCopiedPix(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy Pix code', err);
+    }
+  };
   
   const [searchParams, setSearchParams] = useSearchParams();
   const [showFinanceModal, setShowFinanceModal] = useState(false);
@@ -180,6 +193,33 @@ export default function UserPanel() {
                     }}
                   />
                   <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                  
+                  {/* Pix Copia e Cola */}
+                  <div className="w-full mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col text-left">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pix Copia e Cola</span>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={pixCode} 
+                        className="w-full text-xs font-mono text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none select-all overflow-hidden text-ellipsis"
+                      />
+                      <button 
+                        onClick={handleCopyPix}
+                        type="button"
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0 ${
+                          copiedPix 
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                            : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                        }`}
+                        title="Copiar Código Pix"
+                      >
+                        {copiedPix ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedPix ? 'Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+
                   <button 
                     onClick={handleConfirmPayment}
                     className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
@@ -399,6 +439,33 @@ export default function UserPanel() {
                       }}
                     />
                     <p className="text-xs text-center text-slate-800 font-medium mb-3">Escaneie o QR Code no seu app de banco.</p>
+                    
+                    {/* Pix Copia e Cola */}
+                    <div className="w-full mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col text-left">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pix Copia e Cola</span>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          readOnly 
+                          value={pixCode} 
+                          className="w-full text-xs font-mono text-slate-700 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none select-all overflow-hidden text-ellipsis"
+                        />
+                        <button 
+                          onClick={handleCopyPix}
+                          type="button"
+                          className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0 ${
+                            copiedPix 
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                          }`}
+                          title="Copiar Código Pix"
+                        >
+                          {copiedPix ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedPix ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+                    </div>
+
                     <button 
                       onClick={handleConfirmPayment}
                       className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl py-2.5 px-4 transition-colors text-sm uppercase shadow-md mb-2 cursor-pointer"
