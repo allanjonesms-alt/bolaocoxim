@@ -10,6 +10,7 @@ import UserPanel from './pages/UserPanel';
 import AdminPanel from './pages/AdminPanel';
 import Leaderboard from './pages/Leaderboard';
 import ForgotPassword from './pages/ForgotPassword';
+import Regulations from './pages/Regulations';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
   const { user, profile, loading } = useAuth();
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="match/:id" element={<ProtectedRoute><MatchDetails /></ProtectedRoute>} />
             <Route path="panel" element={<ProtectedRoute><UserPanel /></ProtectedRoute>} />
             <Route path="leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            <Route path="regulamento" element={<ProtectedRoute><Regulations /></ProtectedRoute>} />
             <Route path="admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
           </Route>
         </Routes>
