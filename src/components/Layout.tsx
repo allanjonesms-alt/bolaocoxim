@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LogOut, User, Menu, Trophy, Home } from 'lucide-react';
+import { LogOut, User, Menu, Trophy, Home, BookOpen } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +29,9 @@ export default function Layout() {
               <div className="flex items-center space-x-4 sm:space-x-6">
                 <Link to="/" className="text-emerald-100 hover:text-yellow-400 transition" title="Início">
                   <Home className="h-5 w-5" />
+                </Link>
+                <Link to="/regulamento" className="text-emerald-100 hover:text-yellow-400 transition" title="Regulamento">
+                  <BookOpen className="h-5 w-5" />
                 </Link>
                 <Link to="/panel?openFinance=true" className="flex flex-col items-end group transition" title="Depositar ou Sacar">
                   <span className="text-sm font-medium text-emerald-50 group-hover:text-yellow-400 transition">{profile.name}</span>
@@ -60,10 +63,18 @@ export default function Layout() {
         <Outlet />
       </main>
       
-      <footer className="bg-emerald-950 border-t border-emerald-900 text-emerald-1050/60 py-8 text-center text-sm">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center">
-          <Trophy className="h-5 w-5 text-yellow-400/60 mb-3" />
-          <p className="text-emerald-100/70">&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
+      <footer className="bg-emerald-950 border-t border-emerald-900 text-emerald-100/60 py-8 text-center text-sm">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center space-y-4">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-emerald-200/85 font-medium">
+            <Link to="/" className="hover:text-yellow-400 transition">Início</Link>
+            <Link to="/regulamento" className="hover:text-yellow-400 transition">Regulamento</Link>
+            <Link to="/leaderboard" className="hover:text-yellow-400 transition">Classificação Geral</Link>
+            <Link to="/panel" className="hover:text-yellow-400 transition">Minhas Apostas</Link>
+          </div>
+          <div className="flex flex-col items-center pt-2">
+            <Trophy className="h-5 w-5 text-yellow-400/40 mb-2" />
+            <p className="text-emerald-100/50">&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
+          </div>
         </div>
       </footer>
     </div>
