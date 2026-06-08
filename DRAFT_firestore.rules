@@ -35,7 +35,7 @@ service cloud.firestore {
 
     // Users
     function isValidUser(data) {
-      return data.keys().hasAll(['name', 'email', 'balance', 'role', 'createdAt'])
+      return data.keys().hasAll(['name', 'email', 'balance', 'role'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && data.email is string && data.email.size() <= 200
         && data.balance is number
@@ -51,23 +51,23 @@ service cloud.firestore {
         && isValidUser(incoming()) 
         && incoming().balance == 0
         && incoming().role == 'user'
-        && incoming().createdAt == request.time;
-      allow update: if isValidId(userId) && isValidUser(incoming()) && (
+        && (incoming().get('createdAt', request.time) == request.time);
+      allow update: if isValidId(userId) && (
         isAdmin() ||
         (
           isOwner(userId) && (
             (
+              isValidUser(incoming()) &&
               incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'pix_key', 'updatedAt']) &&
               incoming().role == existing().role &&
-              incoming().balance == existing().balance &&
-              incoming().createdAt == existing().createdAt
+              incoming().balance == existing().balance
             ) ||
             (
               incoming().diff(existing()).affectedKeys().hasOnly(['balance']) &&
+              incoming().balance is number &&
               existing().balance >= 5 &&
               incoming().balance == existing().balance - 5 &&
-              incoming().role == existing().role &&
-              incoming().createdAt == existing().createdAt
+              incoming().role == existing().role
             )
           )
         )
