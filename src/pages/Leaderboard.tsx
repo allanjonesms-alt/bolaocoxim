@@ -26,6 +26,7 @@ export default function Leaderboard() {
       
       snapshot.docs.forEach(doc => {
         const bet = doc.data();
+        if (bet.status !== 'confirmed') return;
         totalAmount += bet.amount;
         if (!scores[bet.userId]) {
           scores[bet.userId] = { userName: bet.userName, points: 0 };

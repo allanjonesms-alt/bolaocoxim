@@ -62,14 +62,11 @@ export default function MatchDetails() {
       // Check for existing pending bet
       const pendingBets = bets.filter(b => b.userId === user.uid && b.status === 'pending');
       
-      let betStatus = 'confirmed';
-      if (profile.balance < 5) {
-        if (pendingBets.length > 0) {
-          setBetError('Você já possui uma aposta pendente por falta de saldo neste jogo. Adicione saldo para confirmar.');
-          setPlacingBet(false);
-          return;
-        }
-        betStatus = 'pending';
+      const hasBalance = profile.balance >= 5;
+      if (!hasBalance && pendingBets.length > 0) {
+        setBetError('Você já possui uma aposta pendente por falta de saldo neste jogo. Adicione saldo para confirmar.');
+        setPlacingBet(false);
+        return;
       }
 
       const betAmount = 5;
@@ -87,24 +84,24 @@ export default function MatchDetails() {
           throw new Error('Apostas encerradas para esta partida.');
         }
 
-        const newBalance = userDoc.data().balance - (betStatus === 'confirmed' ? betAmount : 0);
+        const actualBalance = userDoc.data().balance;
+        const canPay = actualBalance >= betAmount;
 
-        if (betStatus === 'confirmed') {
-          transaction.update(userRef, { balance: newBalance });
-          transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
-
+        if (canPay) {
+          transaction.update(userRef, { balance: actualBalance - betAmount });
+          
           // Record transaction
           const transRef = doc(collection(db, 'transactions'));
           transaction.set(transRef, {
             userId: user.uid,
             type: 'bet',
             amount: betAmount,
-            status: 'confirmed',
+            status: 'pending', // Awaiting admin approval of the bet
             timestamp: serverTimestamp()
           });
         }
         
-        // Add bet
+        // Add bet - under the new rules, it starts as 'pending' always, waiting for direct admin action
         const betRef = doc(collection(db, 'bets'));
         transaction.set(betRef, {
           userId: user.uid,
@@ -113,17 +110,18 @@ export default function MatchDetails() {
           predicted1: p1,
           predicted2: p2,
           amount: betAmount,
-          status: betStatus,
+          status: 'pending',
+          paid: canPay,
           createdAt: serverTimestamp()
         });
       });
       
       setPredict1('');
       setPredict2('');
-      if (betStatus === 'pending') {
-        alert('Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ 5,00). Adicione créditos no seu painel para confirmar automaticamente.');
+      if (hasBalance) {
+        alert('Sua aposta foi registrada com sucesso e aguarda homologação do administrador.');
       } else {
-        alert('Aposta confirmada com sucesso!');
+        alert('Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ 5,00). Adicione créditos no seu painel para confirmar automaticamente.');
       }
 
     } catch (err: any) {
@@ -142,6 +140,10 @@ export default function MatchDetails() {
   // Group bets by score
   const groupedBets: Record<string, Bet[]> = {};
   bets.forEach(b => {
+    // Hide other users' pending bets
+    if (b.status !== 'confirmed' && b.userId !== user?.uid) {
+      return;
+    }
     const key = `${b.predicted1}x${b.predicted2}`;
     if (!groupedBets[key]) groupedBets[key] = [];
     groupedBets[key].push(b);
@@ -278,7 +280,7 @@ export default function MatchDetails() {
           <div className="bg-slate-900 rounded-3xl shadow-xl border border-white/5 p-8">
             <h2 className="text-xl font-display font-bold text-white mb-6 pb-4 border-b border-white/5 flex items-center justify-between">
               Placares Apostados
-              <span className="bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full font-mono">{bets.length} Palpites</span>
+              <span className="bg-slate-800 text-slate-400 text-xs px-3 py-1 rounded-full font-mono">{bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length} Palpites</span>
             </h2>
             
             {Object.keys(groupedBets).length === 0 ? (
@@ -306,10 +308,10 @@ export default function MatchDetails() {
                              {bet.status === 'confirmed' ? (
                                <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${bet.userId === user?.uid ? 'text-emerald-400' : 'text-emerald-500/50'}`} />
                              ) : (
-                               <Clock className="h-3.5 w-3.5 text-orange-500/70 shrink-0" title="Pendente por falta de saldo" />
+                               <Clock className="h-3.5 w-3.5 text-orange-500/75 shrink-0" title="Aposta Pendente" />
                              )}
                              <span className={`font-medium ${bet.userId === user?.uid ? 'text-white' : 'text-slate-400'}`}>
-                               {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''}
+                               {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-400 text-[10px] font-bold uppercase ml-1">(Pendente)</span> : ''}
                              </span>
                            </div>
                         ))}

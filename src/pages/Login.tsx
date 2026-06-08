@@ -99,7 +99,7 @@ export default function Login() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl mb-5 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
             <Trophy className="h-8 w-8 text-emerald-400" />
           </div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Bet<span className="text-emerald-400">2026</span></h1>
+          <h1 className="text-3xl font-display font-bold text-white tracking-tight">BOLÃO COXIM <span className="text-emerald-400">2026</span></h1>
           <p className="text-slate-400 mt-2 text-center text-sm font-medium">
             Sua central de palpites e prêmios.
           </p>

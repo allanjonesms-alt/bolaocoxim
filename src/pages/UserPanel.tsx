@@ -11,6 +11,7 @@ export default function UserPanel() {
   const { user, profile } = useAuth();
   const [bets, setBets] = useState<(Bet & { match?: Match })[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   
   const [showPix, setShowPix] = useState(false);
   const [depositAmount, setDepositAmount] = useState('50');
@@ -45,7 +46,11 @@ export default function UserPanel() {
       setTransactions(transData);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'transactions'));
 
-    return () => { unsubBets(); unsubTrans(); };
+    const unsubMatches = onSnapshot(collection(db, 'matches'), (snapshot) => {
+      setMatches(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match)));
+    });
+
+    return () => { unsubBets(); unsubTrans(); unsubMatches(); };
   }, [user]);
 
   const handleDepositRequest = () => {
@@ -236,23 +241,48 @@ export default function UserPanel() {
             Minhas Apostas
           </h3>
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {bets.length === 0 ? <p className="text-sm text-slate-500 font-medium text-center py-8">Nenhuma aposta realizada.</p> : bets.map(bet => (
-              <div key={bet.id} className="bg-slate-950/50 border border-white/5 rounded-2xl p-4 flex justify-between items-center hover:border-white/10 transition-colors">
-                <div>
-                  <div className="text-white font-bold text-lg font-mono mb-1">Palpite: {bet.predicted1} <span className="text-slate-600">x</span> {bet.predicted2}</div>
-                  <div className="text-xs font-medium bg-slate-900 inline-block px-2 py-1 rounded border border-white/5">
-                    Status: 
-                    <span className={bet.status === 'pending' ? 'text-orange-400 ml-1' : 'text-emerald-400 ml-1'}>
-                      {bet.status === 'pending' ? 'Pendente' : 'Confirmada'}
-                    </span>
+            {bets.length === 0 ? <p className="text-sm text-slate-500 font-medium text-center py-8">Nenhuma aposta realizada.</p> : bets.map(bet => {
+              const m = matches.find(match => match.id === bet.matchId);
+              return (
+                <div key={bet.id} className="bg-slate-950/50 border border-white/5 rounded-2xl p-4 flex justify-between items-center hover:border-white/10 transition-colors">
+                  <div>
+                    {m && (
+                      <div className="text-xs text-slate-400 font-medium mb-1.5 flex items-center gap-1.5">
+                        <span>{m.team1}</span>
+                        {m.flag1?.startsWith('http') || m.flag1?.startsWith('data:') ? (
+                          <img src={m.flag1} alt={m.team1} className="w-4 h-2.5 object-cover rounded-sm border border-white/10" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span>{m.flag1}</span>
+                        )}
+                        <span className="text-slate-600">vs</span>
+                        {m.flag2?.startsWith('http') || m.flag2?.startsWith('data:') ? (
+                          <img src={m.flag2} alt={m.team2} className="w-4 h-2.5 object-cover rounded-sm border border-white/10" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span>{m.flag2}</span>
+                        )}
+                        <span>{m.team2}</span>
+                      </div>
+                    )}
+                    <div className="text-white font-bold text-lg font-mono mb-1">Palpite: {bet.predicted1} <span className="text-slate-600">x</span> {bet.predicted2}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="text-[10px] font-bold uppercase tracking-wider bg-slate-950 px-2 py-0.5 rounded border border-white/5">
+                        Status: 
+                        <span className={bet.status === 'pending' ? 'text-orange-400 ml-1 font-bold' : 'text-emerald-400 ml-1 font-bold'}>
+                          {bet.status === 'pending' ? 'Pendente' : 'Confirmada'}
+                        </span>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${bet.paid ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-500'}`}>
+                        {bet.paid ? 'Pago' : 'Sem Saldo'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Aposta</div>
+                    <div className="text-base font-bold font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">R$ {bet.amount.toFixed(2)}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">Aposta</div>
-                  <div className="text-lg font-bold font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">R$ {bet.amount.toFixed(2)}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -264,8 +294,20 @@ export default function UserPanel() {
             {transactions.length === 0 ? <p className="text-sm text-slate-500 font-medium text-center py-8">Nenhuma transação.</p> : transactions.map(t => (
               <div key={t.id} className="bg-slate-950/50 border border-white/5 rounded-2xl p-4 flex justify-between items-center hover:border-white/10 transition-colors">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-xl mr-4 ${t.status === 'pending' ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
-                    {t.status === 'pending' ? <Clock className="h-5 w-5 text-orange-400" /> : <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
+                  <div className={`p-3 rounded-xl mr-4 ${
+                    t.status === 'pending' 
+                      ? 'bg-orange-500/10 border border-orange-500/20' 
+                      : t.status === 'rejected'
+                      ? 'bg-red-500/10 border border-red-500/20'
+                      : 'bg-emerald-500/10 border border-emerald-500/20'
+                  }`}>
+                    {t.status === 'pending' ? (
+                      <Clock className="h-5 w-5 text-orange-400" />
+                    ) : t.status === 'rejected' ? (
+                      <X className="h-5 w-5 text-red-500" />
+                    ) : (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    )}
                   </div>
                   <div>
                     <div className="text-white font-bold capitalize text-base tracking-wide flex flex-col sm:flex-row sm:items-center gap-2">
@@ -282,6 +324,11 @@ export default function UserPanel() {
                       {t.status === 'pending' && t.type === 'withdrawal' && (
                         <span className="text-[10px] uppercase font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full inline-block">
                           Aguardando Saque
+                        </span>
+                      )}
+                      {t.status === 'rejected' && (
+                        <span className="text-[10px] uppercase font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full inline-block">
+                          Recusada pelo Administrador
                         </span>
                       )}
                     </div>
