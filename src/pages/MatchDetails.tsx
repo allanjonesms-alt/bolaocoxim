@@ -159,6 +159,58 @@ export default function MatchDetails() {
     groupedBets[key].push(b);
   });
 
+  const sortedScores = Object.keys(groupedBets).sort((a, b) => {
+    const [a1, a2] = a.split('x').map(Number);
+    const [b1, b2] = b.split('x').map(Number);
+    
+    const brazilIsTeam2 = match.team2.toLowerCase() === 'brasil' || match.team2.toLowerCase() === 'brazil';
+    
+    let aBraGoals = a1;
+    let aOppGoals = a2;
+    let bBraGoals = b1;
+    let bOppGoals = b2;
+    
+    if (brazilIsTeam2) {
+      aBraGoals = a2;
+      aOppGoals = a1;
+      bBraGoals = b2;
+      bOppGoals = b1;
+    }
+    
+    const getOutcome = (bra: number, opp: number) => {
+      if (bra > opp) return 1; // Win
+      if (bra === opp) return 0; // Draw
+      return -1; // Loss
+    };
+    
+    const aOut = getOutcome(aBraGoals, aOppGoals);
+    const bOut = getOutcome(bBraGoals, bOppGoals);
+    
+    if (aOut !== bOut) {
+      return bOut - aOut; // Win > Draw > Loss
+    }
+    
+    if (aOut === 1) { // Both wins
+      if (bBraGoals !== aBraGoals) {
+         return bBraGoals - aBraGoals;
+      }
+      return aOppGoals - bOppGoals;
+    }
+    
+    if (aOut === 0) { // Both draws
+      return bBraGoals - aBraGoals;
+    }
+    
+    if (aOut === -1) { // Both losses
+      if (aOppGoals !== bOppGoals) {
+        return aOppGoals - bOppGoals;
+      }
+      return bBraGoals - aBraGoals;
+    }
+    
+    return 0;
+  });
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       {/* Match Header */}
@@ -296,15 +348,28 @@ export default function MatchDetails() {
               <div className="text-slate-400 font-medium text-center py-12">Nenhuma aposta registrada ainda. Seja o primeiro!</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar max-h-[600px] overflow-y-auto pr-2">
-                {Object.entries(groupedBets).map(([score, groupBets]) => {
+                {sortedScores.map(score => {
+                  const groupBets = groupedBets[score];
                   const numConfirmed = groupBets.filter(b => b.status === 'confirmed').length;
                   const currentPrizePerPerson = numConfirmed > 0 ? ((match.poolTotal * 0.9) / numConfirmed).toFixed(2) : '0.00';
                   
                   return (
                     <div key={score} className="bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden hover:border-slate-300 transition-colors">
                       <div className="bg-slate-100/70 px-5 py-4 flex justify-between items-center border-b border-slate-200/50">
-                        <div className="font-mono text-2xl font-bold text-slate-800">
-                          {score.replace('x', ' - ')}
+                        <div className="flex items-center gap-3">
+                          {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
+                            <img src={match.flag1} alt={match.team1} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                          ) : (
+                            <span className="text-xl">{match.flag1}</span>
+                          )}
+                          <div className="font-mono text-2xl font-bold text-slate-800">
+                            {score.replace('x', ' - ')}
+                          </div>
+                          {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
+                            <img src={match.flag2} alt={match.team2} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                          ) : (
+                            <span className="text-xl">{match.flag2}</span>
+                          )}
                         </div>
                         <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
                            <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
