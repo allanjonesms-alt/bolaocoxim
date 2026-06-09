@@ -103,12 +103,15 @@ export default function MatchDetails() {
             userId: user.uid,
             type: 'bet',
             amount: betAmount,
-            status: 'pending', // Awaiting admin approval of the bet
+            status: 'confirmed', // Automatically confirmed because bet is paid
             timestamp: serverTimestamp()
           });
+
+          // Also update poolTotal in match
+          transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
         }
         
-        // Add bet - under the new rules, it starts as 'pending' always, waiting for direct admin action
+        // Add bet
         const betRef = doc(collection(db, 'bets'));
         transaction.set(betRef, {
           userId: user.uid,
@@ -117,7 +120,7 @@ export default function MatchDetails() {
           predicted1: p1,
           predicted2: p2,
           amount: betAmount,
-          status: 'pending',
+          status: canPay ? 'confirmed' : 'pending',
           paid: canPay,
           createdAt: serverTimestamp()
         });
@@ -126,9 +129,9 @@ export default function MatchDetails() {
       setPredict1('');
       setPredict2('');
       if (hasBalance) {
-        alert('Sua aposta foi registrada com sucesso e aguarda homologação do administrador.');
+        alert('Sua aposta foi registrada com sucesso e aprovada automaticamente pelo sistema.');
       } else {
-        alert('Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ 5,00). Adicione créditos no seu painel para confirmar automaticamente.');
+        alert('Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ 5,00). Adicione créditos no seu painel para ser homologada.');
       }
 
     } catch (err: any) {

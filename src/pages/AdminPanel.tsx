@@ -26,7 +26,7 @@ const processImage = (file: File): Promise<string> => {
   });
 };
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { Trophy, Edit, Check, X, AlertTriangle, Clock } from 'lucide-react';
+import { Trophy, Edit, Check, X, AlertTriangle, Clock, Wallet } from 'lucide-react';
 
 export default function AdminPanel() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -522,12 +522,27 @@ export default function AdminPanel() {
     }
   }
 
+  const totalSiteBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
-      <h1 className="text-3xl font-display font-bold text-slate-800 flex items-center gap-3">
-        <Trophy className="h-8 w-8 text-emerald-600" />
-        Painel Administrativo
-      </h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-3xl font-display font-bold text-slate-800 flex items-center gap-3">
+          <Trophy className="h-8 w-8 text-emerald-600" />
+          Painel Administrativo
+        </h1>
+        
+        {/* Destaque do Saldo Atual do Site */}
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-5 shadow-lg shadow-emerald-900/20 text-white flex items-center gap-5 border border-emerald-500/30">
+          <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+            <Wallet className="h-7 w-7 text-emerald-50" />
+          </div>
+          <div>
+            <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider mb-0.5">Saldo Total do Site</p>
+            <p className="text-3xl font-mono font-bold tracking-tight">R$ {totalSiteBalance.toFixed(2)}</p>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: Adicionar Partida */}
