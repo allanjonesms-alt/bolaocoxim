@@ -69,14 +69,13 @@ export default function MatchDetails() {
       // Check for existing pending bet
       const pendingBets = bets.filter(b => b.userId === user.uid && b.status === 'pending');
       
-      const hasBalance = profile.balance >= 5;
+      const betAmount = match.isPromotional ? 1 : 5;
+      const hasBalance = profile.balance >= betAmount;
       if (!hasBalance && pendingBets.length > 0) {
         setBetError('Você já possui uma aposta pendente por falta de saldo neste jogo. Adicione saldo para confirmar.');
         setPlacingBet(false);
         return;
       }
-
-      const betAmount = 5;
 
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, 'users', user.uid);
@@ -107,7 +106,9 @@ export default function MatchDetails() {
             timestamp: serverTimestamp()
           });
 
-          // Also update poolTotal in match
+          // Update poolTotal in match
+          // If promotional, 50% goes to general pool, but since it doesn't give prizes we can just add to poolTotal to track total money moved or ignore. We'll add it.
+          // Wait, actually, let's keep track of poolTotal = same thing.
           transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
         }
         
@@ -131,7 +132,7 @@ export default function MatchDetails() {
       if (hasBalance) {
         alert('Sua aposta foi registrada com sucesso e aprovada automaticamente pelo sistema.');
       } else {
-        alert('Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ 5,00). Adicione créditos no seu painel para ser homologada.');
+        alert(`Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ ${betAmount.toFixed(2)}). Adicione créditos no seu painel para ser homologada.`);
       }
 
     } catch (err: any) {
@@ -271,19 +272,32 @@ export default function MatchDetails() {
           </div>
         </div>
         
-        <div className="bg-emerald-55/65 px-6 py-5 border-t border-emerald-100 flex justify-center items-center relative z-10 font-semibold text-emerald-900">
-          <span className="text-slate-500 text-xs uppercase tracking-wider mr-3">Prêmio Acumulado P/ Vencedores:</span>
-          <span className="font-extrabold text-emerald-700 font-mono text-2xl">
-            R$ {(match.poolTotal * 0.9).toFixed(2)}
-          </span>
-        </div>
+        {match.isPromotional ? (
+          <div className="bg-indigo-50/65 px-6 py-5 border-t border-indigo-100 flex justify-center items-center relative z-10 font-semibold text-indigo-900">
+            <span className="text-indigo-500 font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+              🌟 Jogo Promocional - Ganhe pontos para a Classificação Geral
+            </span>
+          </div>
+        ) : (
+          <div className="bg-emerald-55/65 px-6 py-5 border-t border-emerald-100 flex justify-center items-center relative z-10 font-semibold text-emerald-900">
+            <span className="text-slate-500 text-xs uppercase tracking-wider mr-3">Prêmio Acumulado P/ Vencedores:</span>
+            <span className="font-extrabold text-emerald-700 font-mono text-2xl">
+              R$ {(match.poolTotal * 0.9).toFixed(2)}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Betting Form */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 sticky top-24">
-            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center pb-4 border-b border-slate-100">Fazer Aposta <span className="text-emerald-600 ml-2 font-mono text-lg">(R$ 5,00)</span></h2>
+            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center pb-4 border-b border-slate-100">
+              Fazer Aposta 
+              <span className={`${match.isPromotional ? 'text-indigo-600' : 'text-emerald-600'} ml-2 font-mono text-lg`}>
+                (R$ {match.isPromotional ? '1,00' : '5,00'})
+              </span>
+            </h2>
             
             {match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000) ? (
               <div className="bg-slate-50 text-slate-400 font-medium p-6 rounded-2xl text-center text-sm border border-slate-100 flex flex-col items-center mb-2">
@@ -371,10 +385,17 @@ export default function MatchDetails() {
                             <span className="text-xl">{match.flag2}</span>
                           )}
                         </div>
-                        <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
-                           <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
-                          R$ {currentPrizePerPerson}
-                        </div>
+                        {!match.isPromotional ? (
+                          <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
+                             <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
+                            R$ {currentPrizePerPerson}
+                          </div>
+                        ) : (
+                          <div className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
+                             <span className="text-[9px] text-indigo-500/75 uppercase font-bold mb-0.5">PONTOS DE LIGA</span>
+                             + Pontos
+                          </div>
+                        )}
                       </div>
                       <div className="p-4 flex flex-wrap gap-2">
                         {groupBets.map(bet => (

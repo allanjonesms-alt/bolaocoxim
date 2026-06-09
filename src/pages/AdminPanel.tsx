@@ -40,6 +40,7 @@ export default function AdminPanel() {
   const [flagFile1, setFlagFile1] = useState<File | null>(null);
   const [flagFile2, setFlagFile2] = useState<File | null>(null);
   const [newMatchDate, setNewMatchDate] = useState('');
+  const [newMatchIsPromotional, setNewMatchIsPromotional] = useState(false);
   const [uploadingMatch, setUploadingMatch] = useState(false);
 
   // Edit match state
@@ -209,11 +210,13 @@ export default function AdminPanel() {
         flag2: flag2Url,
         date: new Date(newMatchDate).toISOString(),
         status: 'open',
-        poolTotal: 0
+        poolTotal: 0,
+        isPromotional: newMatchIsPromotional
       });
       setNewMatchTeam1(''); setNewMatchTeam2(''); 
       setFlagFile1(null); setFlagFile2(null);
       setNewMatchDate('');
+      setNewMatchIsPromotional(false);
       showNotification('Partida adicionada com sucesso!');
     } catch(err) {
       handleFirestoreError(err, OperationType.CREATE, 'matches');
@@ -524,6 +527,18 @@ export default function AdminPanel() {
 
   const totalSiteBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
 
+  const totalApostado = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
+    return sum + (b.amount || 5);
+  }, 0);
+
+  const totalCaixa = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
+    const m = matches.find(m => m.id === b.matchId);
+    if (m?.isPromotional) {
+      return sum + (b.amount || 1) * 0.5;
+    }
+    return sum + (b.amount || 5) * 0.1;
+  }, 0);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -532,14 +547,30 @@ export default function AdminPanel() {
           Painel Administrativo
         </h1>
         
-        {/* Destaque do Saldo Atual do Site */}
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-5 shadow-lg shadow-emerald-900/20 text-white flex items-center gap-5 border border-emerald-500/30">
-          <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-            <Wallet className="h-7 w-7 text-emerald-50" />
+        {/* Destaques de Saldo */}
+        <div className="flex flex-wrap gap-4">
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-4 shadow-lg shadow-emerald-900/20 text-white flex items-center gap-4 border border-emerald-500/30">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+              <Wallet className="h-6 w-6 text-emerald-50" />
+            </div>
+            <div>
+              <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-0.5">Saldo do Site</p>
+              <p className="text-2xl font-mono font-bold tracking-tight">R$ {totalSiteBalance.toFixed(2)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-emerald-100 text-sm font-semibold uppercase tracking-wider mb-0.5">Saldo Total do Site</p>
-            <p className="text-3xl font-mono font-bold tracking-tight">R$ {totalSiteBalance.toFixed(2)}</p>
+          
+          <div className="bg-white rounded-2xl p-4 shadow-md text-slate-800 flex items-center gap-4 border border-slate-200">
+            <div>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-0.5">Apostado</p>
+              <p className="text-2xl font-mono font-bold tracking-tight">R$ {totalApostado.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 shadow-md text-slate-800 flex items-center gap-4 border border-slate-200">
+            <div>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-0.5">Caixa (Admin)</p>
+              <p className="text-2xl font-mono font-bold text-emerald-600 tracking-tight">R$ {totalCaixa.toFixed(2)}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -596,6 +627,17 @@ export default function AdminPanel() {
                   required 
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm" 
                 />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Jogo Promocional?</label>
+                <select 
+                  value={newMatchIsPromotional ? 'sim' : 'nao'} 
+                  onChange={e => setNewMatchIsPromotional(e.target.value === 'sim')} 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm"
+                >
+                  <option value="nao">NÃO</option>
+                  <option value="sim">SIM</option>
+                </select>
               </div>
               <button 
                 type="submit" 

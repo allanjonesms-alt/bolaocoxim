@@ -26,6 +26,7 @@ export interface Match {
   result1?: number;
   result2?: number;
   poolTotal: number;
+  isPromotional?: boolean;
 }
 
 export interface Bet {
