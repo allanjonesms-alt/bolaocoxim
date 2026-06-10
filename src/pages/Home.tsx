@@ -10,16 +10,24 @@ import MatchCountdown from '../components/MatchCountdown';
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'matches'), orderBy('date', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
       setMatches(matchData);
+      setError(null);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'matches');
+      console.error("Error listing matches:", error);
+      setError(error.message || "Erro ao carregar os jogos.");
       setLoading(false);
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'matches');
+      } catch (e) {
+        console.error("Mapped Firestore Error:", e);
+      }
     });
 
     return () => unsubscribe();
@@ -27,6 +35,21 @@ export default function Home() {
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500 font-medium">Carregando jogos...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-12 text-center max-w-lg mx-auto bg-white rounded-3xl border border-red-100 shadow-sm">
+        <div className="text-red-500 font-bold mb-2">Ops! Ocorreu um erro</div>
+        <p className="text-slate-500 text-sm mb-4">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition"
+        >
+          Tentar Novamente
+        </button>
+      </div>
+    );
   }
 
   return (

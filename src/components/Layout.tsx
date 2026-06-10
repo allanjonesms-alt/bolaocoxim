@@ -41,7 +41,7 @@ export default function Layout() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    navigate('/login');
+    navigate('/');
   };
 
   return (
@@ -56,8 +56,8 @@ export default function Layout() {
               <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">BOLÃO COXIM <span className="text-yellow-400">2026</span></span>
             </Link>
 
-            {profile && (
-              <div className="flex items-center space-x-4 sm:space-x-6">
+            {profile ? (
+              <div className="flex items-center space-x-4 sm:space-x-6 animate-fade-in">
                 <Link to="/" className="text-emerald-100 hover:text-yellow-400 transition" title="Início">
                   <Home className="h-5 w-5" />
                 </Link>
@@ -99,6 +99,25 @@ export default function Layout() {
                 <button onClick={handleLogout} className="text-emerald-200 hover:text-rose-300 transition ml-2 cursor-pointer" title="Sair">
                   <LogOut className="h-5 w-5" />
                 </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3 sm:space-x-5 animate-fade-in">
+                <Link to="/" className="text-emerald-100 hover:text-yellow-400 font-medium text-sm hidden md:block transition">
+                  Início
+                </Link>
+                <Link to="/leaderboard" className="text-emerald-100 hover:text-yellow-400 font-medium text-sm hidden md:block transition">
+                  Classificação Geral
+                </Link>
+                <Link to="/regulamento" className="text-emerald-100 hover:text-yellow-400 font-medium text-sm hidden md:block transition">
+                  Regulamento
+                </Link>
+                <Link 
+                  to="/login" 
+                  className="bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm transition-all duration-200 shadow-sm hover:shadow-md hover:scale-[1.02] flex items-center"
+                >
+                  <User className="h-4 w-4 mr-1.5" />
+                  Entrar / Cadastro
+                </Link>
               </div>
             )}
           </div>

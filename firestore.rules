@@ -92,8 +92,7 @@ service cloud.firestore {
     }
 
     match /matches/{matchId} {
-      allow get: if isValidId(matchId) && isSignedIn();
-      allow list: if isSignedIn(); // All authenticated users can list matches
+      allow read: if true;
       allow create: if isAdmin() && isValidMatch(incoming()) && incoming().poolTotal == 0;
       allow update: if isValidId(matchId) && isValidMatch(incoming()) && (
         isAdmin() ||
@@ -120,8 +119,7 @@ service cloud.firestore {
     }
 
     match /bets/{betId} {
-      allow get: if isValidId(betId) && isSignedIn();
-      allow list: if isSignedIn(); // All users can list bets for a match
+      allow read: if true;
       allow create: if isSignedIn() && isValidBet(incoming()) &&
         // ensure match exists and is open
         get(/databases/$(database)/documents/matches/$(incoming().matchId)).data.status == 'open';

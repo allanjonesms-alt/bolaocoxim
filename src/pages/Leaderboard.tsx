@@ -15,6 +15,7 @@ export default function Leaderboard() {
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [prizePool, setPrizePool] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // We get all bets and sum points for each user.
@@ -42,10 +43,17 @@ export default function Leaderboard() {
       
       setPrizePool(totalAmount * 0.02); // 2% of total bets
       setBoard(rows);
+      setError(null);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'bets');
+      console.error("Error loading leaderboard:", error);
+      setError(error.message || "Erro ao carregar a classificação.");
       setLoading(false);
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'bets');
+      } catch (e) {
+        console.error("Mapped Firestore Error:", e);
+      }
     });
 
     return () => unsubscribeBets();
@@ -53,6 +61,21 @@ export default function Leaderboard() {
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500 font-medium">Carregando classificação...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-12 text-center max-w-lg mx-auto bg-white rounded-3xl border border-red-100 shadow-sm mt-8">
+        <div className="text-red-500 font-bold mb-2">Ops! Ocorreu um erro</div>
+        <p className="text-slate-500 text-sm mb-4">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition"
+        >
+          Tentar Novamente
+        </button>
+      </div>
+    );
   }
 
   return (

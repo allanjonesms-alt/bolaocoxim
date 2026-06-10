@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Match, Bet } from '../types';
-import { CheckCircle2, DollarSign, Clock, Lock } from 'lucide-react';
+import { CheckCircle2, DollarSign, Clock, Lock, User } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 
 export default function MatchDetails() {
@@ -312,6 +312,29 @@ export default function MatchDetails() {
               <div className="bg-slate-50 text-slate-400 font-medium p-6 rounded-2xl text-center text-sm border border-slate-100 flex flex-col items-center mb-2">
                 <Lock className="h-6 w-6 text-slate-350 mb-2" />
                 Apostas encerradas para este jogo.
+              </div>
+            ) : !user ? (
+              <div className="bg-slate-55 border border-slate-200/80 text-slate-600 font-medium p-6 sm:p-7 rounded-2xl text-center text-sm flex flex-col items-center">
+                <div className="bg-yellow-450/10 p-3 rounded-full mb-3 text-emerald-800">
+                  <User className="h-6 w-6" />
+                </div>
+                <p className="mb-4 text-slate-500 font-medium leading-relaxed">Você precisa estar conectado para palpitar neste jogo.</p>
+                <Link 
+                  to="/login" 
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl transition duration-150 inline-flex items-center justify-center text-sm"
+                >
+                  Entrar / Criar Conta
+                </Link>
+              </div>
+            ) : match.isPromotional && bets.filter(b => b.userId === user.uid).length >= 3 ? (
+              <div className="bg-indigo-50 border border-indigo-200 text-slate-700 font-medium p-6 sm:p-7 rounded-2xl text-center text-sm flex flex-col items-center gap-3 animate-fade-in">
+                <div className="bg-indigo-100 p-3 rounded-full text-indigo-700">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <p className="font-bold text-base text-slate-800">Limite de Apostas Atingido</p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Você já registrou os 3 palpites permitidos para esta partida promocional.
+                </p>
               </div>
             ) : (
               <form onSubmit={handlePlaceBet} className="space-y-6">

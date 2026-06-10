@@ -8,6 +8,8 @@ import Home from './pages/Home';
 import MatchDetails from './pages/MatchDetails';
 import UserPanel from './pages/UserPanel';
 import AdminPanel from './pages/AdminPanel';
+import AdminUsers from './pages/AdminUsers';
+import AdminLogs from './pages/AdminLogs';
 import Leaderboard from './pages/Leaderboard';
 import ForgotPassword from './pages/ForgotPassword';
 import Regulations from './pages/Regulations';
@@ -32,12 +34,14 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           
           <Route path="/" element={<Layout />}>
-            <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="match/:id" element={<ProtectedRoute><MatchDetails /></ProtectedRoute>} />
+            <Route index element={<Home />} />
+            <Route path="match/:id" element={<MatchDetails />} />
             <Route path="panel" element={<ProtectedRoute><UserPanel /></ProtectedRoute>} />
-            <Route path="leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-            <Route path="regulamento" element={<ProtectedRoute><Regulations /></ProtectedRoute>} />
+            <Route path="leaderboard" element={<Leaderboard />} />
+            <Route path="regulamento" element={<Regulations />} />
             <Route path="admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
+            <Route path="admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+            <Route path="admin/logs" element={<ProtectedRoute adminOnly><AdminLogs /></ProtectedRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>

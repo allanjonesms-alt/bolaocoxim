@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, runTransaction, getDocs, where, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match, Transaction, UserProfile, Bet } from '../types';
+import { Link } from 'react-router-dom';
 
 const processImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -343,15 +344,16 @@ export default function AdminPanel() {
           throw new Error("Documentos não encontrados.");
         }
 
+        const betAmount = betDoc.data().amount || b.amount || 5;
         const isPaid = betDoc.data().paid;
         let finalPaid = isPaid;
 
         if (!isPaid) {
           const userBalance = userDoc.data().balance;
-          if (userBalance < 5) {
-            throw new Error("O usuário não possui saldo suficiente (R$ 5,00) para homologar esta aposta.");
+          if (userBalance < betAmount) {
+            throw new Error(`O usuário não possui saldo suficiente (R$ ${betAmount.toFixed(2)}) para homologar esta aposta.`);
           }
-          transaction.update(userRef, { balance: userBalance - 5 });
+          transaction.update(userRef, { balance: userBalance - betAmount });
           finalPaid = true;
 
           // Record a confirmed bet transaction
@@ -359,7 +361,7 @@ export default function AdminPanel() {
           transaction.set(transRef, {
             userId: b.userId,
             type: 'bet',
-            amount: 5,
+            amount: betAmount,
             status: 'confirmed',
             timestamp: serverTimestamp()
           });
@@ -375,7 +377,7 @@ export default function AdminPanel() {
         transaction.update(betRef, { status: 'confirmed', paid: finalPaid });
 
         // Update match's poolTotal
-        transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + 5 });
+        transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
       });
 
       showNotification('Aposta aprovada com sucesso!');
@@ -397,12 +399,13 @@ export default function AdminPanel() {
           throw new Error("Aposta não encontrada.");
         }
 
+        const betAmount = betDoc.data().amount || b.amount || 5;
         const isPaid = betDoc.data().paid;
 
         if (isPaid && userDoc.exists()) {
           // Refund user balance
           const userBalance = userDoc.data().balance;
-          transaction.update(userRef, { balance: userBalance + 5 });
+          transaction.update(userRef, { balance: userBalance + betAmount });
         }
 
         // Delete the bet document
@@ -746,57 +749,36 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* Seção de Usuários Cadastrados */}
-      <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
-        <h2 className="font-display font-bold mb-6 text-slate-800 text-lg flex items-center gap-3">
-          <span>Usuários Cadastrados</span>
-          <span className="bg-emerald-50 text-emerald-700 border border-emerald-250 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold">
-            {users.length}
-          </span>
-        </h2>
-        <div className="overflow-x-auto custom-scrollbar border border-slate-150 rounded-2xl">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold">
-                <th className="py-4 px-5">Nome</th>
-                <th className="py-4 px-5">E-mail</th>
-                <th className="py-4 px-5">Celular</th>
-                <th className="py-4 px-5">Saldo</th>
-                <th className="py-4 px-5">Função</th>
-                <th className="py-4 px-5 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm text-slate-600 bg-white">
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">Nenhum usuário cadastrado.</td>
-                </tr>
-              ) : (
-                users.map(u => (
-                  <tr key={u.id} className="hover:bg-slate-50/55 transition-colors">
-                    <td className="py-3.5 px-5 font-bold text-slate-800">{u.name}</td>
-                    <td className="py-3.5 px-5 text-slate-500 select-all font-medium">{u.email}</td>
-                    <td className="py-3.5 px-5 font-mono text-slate-500">{u.phone || '-'}</td>
-                    <td className="py-3.5 px-5 font-mono font-bold text-emerald-700">R$ {(u.balance || 0).toFixed(2)}</td>
-                    <td className="py-3.5 px-5">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200/50'}`}>
-                        {u.role === 'admin' ? 'Admin' : 'Usuário'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button 
-                        onClick={() => handleOpenUserModal(u)}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs transition-colors shadow-sm cursor-pointer"
-                      >
-                        EDITAR
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Botões de Acesso Rápido a Novas Telas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <Link 
+          to="/admin/users" 
+          className="bg-white p-8 rounded-3xl shadow-md border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-4 cursor-pointer"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-emerald-500/10 transition-colors"></div>
+          <div className="bg-emerald-50 p-4 rounded-full text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-100 transition-all flex items-center justify-center relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{users.length}</span>
+          </div>
+          <div className="text-center">
+            <h3 className="font-display font-bold text-slate-800 text-lg uppercase tracking-wider mb-1">Gerenciar Usuários</h3>
+            <p className="text-sm text-slate-500 font-medium">Ver lista completa, editar cadastros e gerenciar saldos.</p>
+            <p className="text-3xl font-mono font-bold text-emerald-600 mt-4">{users.length}</p>
+          </div>
+        </Link>
+        <Link 
+          to="/admin/logs" 
+          className="bg-white p-8 rounded-3xl shadow-md border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-4 cursor-pointer"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
+          <div className="bg-indigo-50 p-4 rounded-full text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-100 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          </div>
+          <div className="text-center">
+            <h3 className="font-display font-bold text-slate-800 text-lg uppercase tracking-wider mb-1">Logs de Apostas</h3>
+            <p className="text-sm text-slate-500 font-medium">Histórico detalhado de todos os palpites realizados no sistema.</p>
+          </div>
+        </Link>
       </div>
 
       {/* Gerenciar Partidas Section */}
@@ -920,317 +902,6 @@ export default function AdminPanel() {
           ))}
         </div>
       </div>
-
-      {/* Modal Dossier de Detalhes do Usuário */}
-      {selectedUser && (() => {
-        const liveSelectedUser = users.find(u => u.id === selectedUser.id) || selectedUser;
-        return (
-          <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-            <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
-              
-              {/* Header */}
-              <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                <div>
-                  <h3 className="text-xl font-display font-bold text-slate-800 flex items-center gap-2">
-                    <span>Dossiê de {liveSelectedUser.name}</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase ${liveSelectedUser.role === 'admin' ? 'bg-emerald-50 text-emerald-800 border border-emerald-150' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                      {liveSelectedUser.role === 'admin' ? 'Admin' : 'Jogador'}
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-1 select-all">{liveSelectedUser.email}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedUser(null)} 
-                  className="text-slate-400 hover:text-slate-750 bg-slate-100 hover:bg-slate-200 p-2.5 rounded-full transition-colors cursor-pointer"
-                  title="Fechar"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                
-                {/* Resumo Financeiro */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-1">Saldo Atual</span>
-                    <span className="text-2xl font-bold font-mono text-emerald-700 bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-200 inline-block shadow-sm">
-                      R$ {(liveSelectedUser.balance || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:items-end gap-1.5 text-xs">
-                    {liveSelectedUser.pix_key && (
-                      <p className="text-slate-600 font-medium">
-                        <strong className="text-slate-400 mr-1">Chave Pix:</strong> 
-                        <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700 select-all font-mono">{liveSelectedUser.pix_key}</span>
-                      </p>
-                    )}
-                    {liveSelectedUser.phone && (
-                      <p className="text-slate-600 font-medium">
-                        <strong className="text-slate-400 mr-1">Celular:</strong> 
-                        <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-mono select-all">{liveSelectedUser.phone}</span>
-                      </p>
-                    )}
-                    <p className="text-slate-400 font-semibold text-[10px] uppercase tracking-wider">
-                      Conta registrada: {formatDateTime(liveSelectedUser.createdAt)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Editar Dados do Usuário */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-[40px] pointer-events-none"></div>
-                  <h4 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-2 text-left">
-                    <span>Editar Cadastro do Usuário</span>
-                  </h4>
-                  <div className="flex flex-col sm:flex-row items-end gap-4 relative z-10">
-                    <div className="flex-1 w-full space-y-2 text-left">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Nome Completo</label>
-                      <input
-                        type="text"
-                        value={editUserName}
-                        onChange={(e) => setEditUserName(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 font-medium text-sm"
-                        placeholder="Nome do usuário"
-                        required
-                      />
-                    </div>
-
-                    <div className="w-full sm:w-64 space-y-2 text-left">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Telefone / Celular</label>
-                      <input
-                        type="text"
-                        value={editUserPhone}
-                        onChange={(e) => setEditUserPhone(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 font-medium text-sm"
-                        placeholder="Ex: (67) 99999-9999"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={savingUserData || !editUserName.trim()}
-                      onClick={async () => {
-                        setSavingUserData(true);
-                        try {
-                          await updateDoc(doc(db, 'users', liveSelectedUser.id), {
-                            name: editUserName,
-                            phone: editUserPhone
-                          });
-                          showNotification('Cadastro atualizado com sucesso!');
-                        } catch (err) {
-                          handleFirestoreError(err, OperationType.UPDATE, 'users');
-                        } finally {
-                          setSavingUserData(false);
-                        }
-                      }}
-                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer text-white bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      {savingUserData ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Ajustar Saldo (Admin Balance Actions) */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-[40px] pointer-events-none"></div>
-                  <h4 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-2">
-                    <span>Ajustar Saldo do Usuário</span>
-                  </h4>
-                  <div className="flex flex-col sm:flex-row items-end gap-4 relative z-10">
-                    <div className="flex-1 w-full space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de Ajuste</label>
-                      <div className="grid grid-cols-2 gap-2 bg-white p-1 rounded-xl border border-slate-200">
-                        <button
-                          type="button"
-                          onClick={() => setAdjustmentType('deposit')}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            adjustmentType === 'deposit'
-                              ? 'bg-emerald-600 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                          }`}
-                        >
-                          Adicionar (+ Depósito)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAdjustmentType('withdrawal')}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            adjustmentType === 'withdrawal'
-                              ? 'bg-amber-500 text-white shadow-sm'
-                              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                          }`}
-                        >
-                          Deduzir (- Saque)
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="w-full sm:w-48 space-y-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Valor (R$)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0.01"
-                        placeholder="Ex: 50.00"
-                        value={customAmount}
-                        onChange={(e) => setCustomAmount(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 font-mono font-semibold"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={adjustingBalance || !customAmount}
-                      onClick={() => handleAdjustBalance(liveSelectedUser.id)}
-                      className={`w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer text-white ${
-                        adjustmentType === 'deposit'
-                          ? 'bg-emerald-600 hover:bg-emerald-700'
-                          : 'bg-amber-600 hover:bg-amber-700'
-                      }`}
-                    >
-                      {adjustingBalance ? 'Processando...' : 'Aplicar Ajuste'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Histórico / Extrato de Palpites Apostados */}
-                <div>
-                  <h4 className="text-md font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <span>Histórico de Palpites (Extrato de Apostas)</span>
-                    <span className="bg-slate-100 text-slate-500 border border-slate-250 font-mono text-xs px-2 py-0.5 rounded-full font-bold">
-                      {selectedUserBets.length}
-                    </span>
-                  </h4>
-
-                  {loadingBets ? (
-                    <div className="text-center py-12 text-slate-400">
-                      <span className="inline-block animate-spin border-2 border-emerald-600 border-t-transparent w-6 h-6 rounded-full mb-3 animate-pulse"></span>
-                      <p className="text-sm">Carregando apostas do usuário...</p>
-                    </div>
-                  ) : selectedUserBets.length === 0 ? (
-                    <p className="text-sm text-slate-400 font-medium text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-                      Este usuário ainda não realizou nenhuma aposta.
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {selectedUserBets.map(bet => {
-                        const match = matches.find(m => m.id === bet.matchId);
-                        const isFinished = match?.status === 'finished';
-                        
-                        let pointsLabel = '';
-                        let pointsClass = 'text-slate-500 bg-slate-100/80 border-slate-200';
-                        if (isFinished && bet.points !== undefined) {
-                          if (bet.points === 5) {
-                            pointsLabel = 'Placar Exato (+5 pts)';
-                            pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                          } else if (bet.points === 3) {
-                            pointsLabel = 'Gols de 1 Time (+3 pts)';
-                            pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
-                          } else if (bet.points === 1) {
-                            pointsLabel = 'Vencedor do Jogo (+1 pt)';
-                            pointsClass = 'text-amber-700 bg-amber-50 border-amber-250';
-                          } else {
-                            pointsLabel = 'Sem Pontuação (0 pts)';
-                            pointsClass = 'text-red-700 bg-red-50 border-red-200';
-                          }
-                        }
-
-                        return (
-                          <div key={bet.id} className="bg-slate-50 border border-slate-200 hover:border-slate-300 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-colors">
-                            <div className="space-y-2 flex-1">
-                              {/* Match details & Teams */}
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                                {match ? (
-                                  <>
-                                    <span className="text-slate-800 font-bold text-sm tracking-wide">{match.team1}</span>
-                                    {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
-                                      <img src={match.flag1} alt={match.team1} className="w-5 h-3.5 object-cover rounded shadow-2xs border border-slate-200 inline-block" referrerPolicy="no-referrer" />
-                                    ) : (
-                                      <span className="text-lg">{match.flag1}</span>
-                                    )}
-                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">vs</span>
-                                    {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
-                                      <img src={match.flag2} alt={match.team2} className="w-5 h-3.5 object-cover rounded shadow-2xs border border-slate-200 inline-block" referrerPolicy="no-referrer" />
-                                    ) : (
-                                      <span className="text-lg">{match.flag2}</span>
-                                    )}
-                                    <span className="text-slate-800 font-bold text-sm tracking-wide">{match.team2}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-xs text-slate-400 font-medium italic animate-pulse">Carregando partida ({bet.matchId})...</span>
-                                )}
-                              </div>
-
-                              {/* Bet value and predict details */}
-                              <div className="flex flex-wrap items-center gap-3 text-xs">
-                                <div className="text-slate-700 font-medium">
-                                  Palpite: <span className="text-emerald-800 font-bold font-mono text-sm bg-white px-2.5 py-0.5 rounded border border-slate-200 shadow-3xs">{bet.predicted1} x {bet.predicted2}</span>
-                                </div>
-                                <span className="text-slate-300">|</span>
-                                <div className="text-slate-550">
-                                  Valor Apostado: <span className="font-mono text-slate-800 font-bold">R$ {bet.amount.toFixed(2)}</span>
-                                </div>
-                                
-                                {/* Date and Time details */}
-                                <span className="text-slate-300">|</span>
-                                <div className="text-slate-500 font-medium">
-                                  Apostado em: <span className="font-mono text-slate-500">{formatDateTime(bet.createdAt)}</span>
-                                </div>
-                              </div>
-
-                              {/* Real Match Outcome context */}
-                              {isFinished && match && (
-                                <div className="text-xs text-slate-500 font-medium">
-                                  Resultado Real: <span className="text-slate-800 font-bold font-mono bg-white border border-slate-200 px-20 py-0.5 rounded shadow-3xs">{match.result1} x {match.result2}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex sm:flex-row md:flex-col items-end gap-2 shrink-0 w-full md:w-auto border-t md:border-t-0 border-slate-200/60 pt-3 md:pt-0">
-                              {/* Bet status badge */}
-                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${bet.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-250' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                                {bet.status === 'confirmed' ? 'Confirmada' : 'Pendente'}
-                              </span>
-
-                              {/* Prize and Points details if finished */}
-                              {isFinished && (
-                                <div className="flex flex-row md:flex-col gap-2 items-center md:items-end w-full md:w-auto justify-between md:justify-start">
-                                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase border ${pointsClass}`}>
-                                    {pointsLabel}
-                                  </span>
-                                  {bet.prize_collected !== undefined && bet.prize_collected > 0 && (
-                                    <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg text-right">
-                                      Prêmio: +R$ {bet.prize_collected.toFixed(2)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 border-t border-slate-200 flex justify-end bg-slate-50">
-                <button 
-                  onClick={() => setSelectedUser(null)} 
-                  className="bg-slate-800 hover:bg-slate-900 border border-slate-900 text-white rounded-xl px-5 py-2.5 font-bold text-sm transition-colors cursor-pointer uppercase tracking-wider text-xs"
-                >
-                  Fechar Dossiê
-                </button>
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Toast Notification */}
       {toast && (
@@ -1358,7 +1029,7 @@ export default function AdminPanel() {
 
                 {!isApprove && (
                   <p className="text-xs text-amber-800 font-semibold bg-amber-50 border border-amber-20 border-teal-200 rounded-xl p-2.5">
-                    Aviso: Recusar esta aposta irá deletá-la definitivamente. Caso ela estivesse paga, os R$ 5,00 serão reembolsados ao saldo do usuário!
+                    Aviso: Recusar esta aposta irá deletá-la definitivamente. Caso ela estivesse paga, os R$ {b.amount.toFixed(2)} serão reembolsados ao saldo do usuário!
                   </p>
                 )}
               </div>
