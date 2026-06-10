@@ -1,12 +1,43 @@
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { LogOut, User, Menu, Trophy, Home, BookOpen } from 'lucide-react';
+import { LogOut, User, Menu, Trophy, Home, BookOpen, Bell, CheckCircle2, X } from 'lucide-react';
 import { signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+
+interface PixRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  type: string;
+  verified: boolean;
+  timestamp: any;
+}
 
 export default function Layout() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [pixRequests, setPixRequests] = useState<PixRequest[]>([]);
+  const [showPixModal, setShowPixModal] = useState(false);
+
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      const q = query(
+        collection(db, 'pix_requests'),
+        where('verified', '==', false)
+      );
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPixRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PixRequest)));
+      });
+      return () => unsubscribe();
+    }
+  }, [profile?.role]);
+
+  const handleVerifyPixRequest = async (id: string) => {
+    await updateDoc(doc(db, 'pix_requests', id), { verified: true });
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -45,9 +76,24 @@ export default function Layout() {
                 </Link>
                 
                 {profile.role === 'admin' && (
-                  <Link to="/admin" className="text-yellow-300 bg-emerald-800/80 border border-yellow-400/30 hover:bg-emerald-800 px-3 py-1.5 rounded-md text-sm transition font-medium">
-                    Admin
-                  </Link>
+                  <div className="flex items-center space-x-4">
+                    <button 
+                      onClick={() => setShowPixModal(true)}
+                      className="relative text-emerald-100 hover:text-yellow-400 transition"
+                      title="Solicitações de PIX"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {pixRequests.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                      )}
+                    </button>
+                    <Link to="/admin" className="text-yellow-300 bg-emerald-800/80 border border-yellow-400/30 hover:bg-emerald-800 px-3 py-1.5 rounded-md text-sm transition font-medium">
+                      Admin
+                    </Link>
+                  </div>
                 )}
                 
                 <button onClick={handleLogout} className="text-emerald-200 hover:text-rose-300 transition ml-2 cursor-pointer" title="Sair">
@@ -77,6 +123,54 @@ export default function Layout() {
           </div>
         </div>
       </footer>
+
+      {/* Pix Requests Modal for Admins */}
+      {showPixModal && profile?.role === 'admin' && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 w-full max-w-lg p-6 relative overflow-hidden">
+            <button 
+              onClick={() => setShowPixModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
+              title="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
+              <Bell className="h-6 w-6 mr-3 text-emerald-600" />
+              Solicitações de PIX Pendentes
+            </h3>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              {pixRequests.length === 0 ? (
+                <p className="text-slate-500 font-medium text-center py-8">Nenhuma solicitação pendente.</p>
+              ) : (
+                pixRequests.map(req => (
+                  <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-800">{req.userName}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs font-mono text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                          R$ {req.amount.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium lowercase">
+                          {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleString() : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleVerifyPixRequest(req.id)}
+                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-2.5 rounded-xl transition-colors shrink-0"
+                      title="Verificar"
+                    >
+                      <CheckCircle2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

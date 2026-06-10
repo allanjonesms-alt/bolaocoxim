@@ -149,7 +149,7 @@ export default function Regulations() {
             <h2 className="text-lg font-display font-bold text-slate-800 uppercase tracking-wider">Aprovação e Saldo</h2>
             <div className="text-slate-600 text-sm leading-relaxed space-y-3">
               <p>
-                Quando você salva uma aposta, se houver saldo válido (R$ 5,00 por palpite), ela é enviada imediatamente para a auditoria dos administradores.
+                Quando você salva uma aposta, se houver saldo válido (R$ 5,00 ou R$ 1,00 dependendo do tipo da aposta), ela é <strong>aprovada automaticamente pelo sistema</strong>.
               </p>
               <p>
                 Apostas para as quais não haja saldo regular suficiente entrarão no sistema sob o rótulo de <strong>Aposta Pendente</strong>.
@@ -162,6 +162,34 @@ export default function Regulations() {
           <div className="border-t border-slate-100 mt-6 pt-4 flex items-center justify-between">
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">Auditoria Clara</span>
             <span className="text-xs font-bold text-indigo-700">Garantia Antifraude</span>
+          </div>
+        </motion.div>
+
+        {/* Rule 5: Jogos Promocionais */}
+        <motion.div 
+          variants={itemVariants}
+          className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-indigo-200 hover:border-indigo-500/50 transition-all duration-300 relative group flex flex-col justify-between md:col-span-2"
+        >
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-xs">
+              <Trophy className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-display font-bold text-indigo-800 uppercase tracking-wider">Jogos Promocionais</h2>
+            <div className="text-slate-600 text-sm leading-relaxed space-y-3">
+              <p>
+                Os Jogos Promocionais são uma modalidade especial que <strong>não distribui prêmios em dinheiro</strong>, mas serve exclusivamente para somar pontos na <strong>Classificação Geral</strong>.
+              </p>
+              <p className="border-l-4 border-indigo-500 pl-3 py-1 bg-indigo-50/50 rounded-r-lg">
+                O custo para registrar um palpite nesta modalidade é de apenas <strong>R$ 1,00</strong>.
+              </p>
+              <p>
+                Cada usuário tem um limite máximo de <strong>3 apostas</strong> por partida em jogos promocionais. Metade dos valores arrecadados nessas partidas são adicionados ao caixa para a grande premiação da Classificação Geral!
+              </p>
+            </div>
+          </div>
+          <div className="border-t border-slate-100 mt-6 pt-4 flex items-center justify-between">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">Pontuação na Liga</span>
+            <span className="text-xs font-bold text-indigo-700">R$ 1,00 por Palpite</span>
           </div>
         </motion.div>
       </div>

@@ -66,10 +66,24 @@ export default function UserPanel() {
     return () => { unsubBets(); unsubTrans(); unsubMatches(); };
   }, [user]);
 
-  const handleDepositRequest = () => {
+  const handleDepositRequest = async () => {
     const amount = parseFloat(depositAmount);
     if (isNaN(amount) || amount <= 0) return;
-    setShowPix(true);
+    
+    try {
+      await addDoc(collection(db, 'pix_requests'), {
+        userId: user!.uid,
+        userName: profile.name,
+        amount,
+        type: 'deposit',
+        verified: false,
+        timestamp: serverTimestamp()
+      });
+      setShowPix(true);
+    } catch(err) {
+      console.error(err);
+      setShowPix(true); // show pix anyway
+    }
   };
 
   const handleConfirmPayment = async () => {

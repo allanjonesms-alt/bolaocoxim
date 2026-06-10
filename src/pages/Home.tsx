@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { Match } from '../types';
 import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
+import MatchCountdown from '../components/MatchCountdown';
 
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -78,9 +79,12 @@ export default function Home() {
                       <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/0 via-emerald-500/0 to-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       
                       <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm relative z-10">
-                        <span className="text-slate-500 font-medium tracking-wide text-xs">
-                          {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex flex-col items-start">
+                          <span className="text-slate-500 font-semibold tracking-wide text-xs">
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                          </span>
+                          <MatchCountdown matchDate={match.date} isOpen={isOpen} />
+                        </div>
                         
                         {isOpen ? (
                           <span className="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md text-xs border border-emerald-100 flex items-center">Aberto</span>
@@ -173,9 +177,12 @@ export default function Home() {
                       className="group bg-gradient-to-b from-indigo-50/50 to-white rounded-3xl border border-indigo-200 overflow-hidden hover:border-indigo-500 transition-all flex flex-col relative shadow-sm hover:shadow-md transform hover:-translate-y-1"
                     >
                       <div className="bg-indigo-100/50 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
-                        <span className="text-indigo-600/80 font-medium tracking-wide text-xs">
-                          {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex flex-col items-start">
+                          <span className="text-indigo-600/80 font-semibold tracking-wide text-xs">
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                          </span>
+                          <MatchCountdown matchDate={match.date} isOpen={isOpen} />
+                        </div>
                         
                         {isOpen ? (
                           <span className="bg-indigo-500 text-white font-bold px-2.5 py-1 rounded-md text-xs shadow-sm flex items-center">Aberto</span>

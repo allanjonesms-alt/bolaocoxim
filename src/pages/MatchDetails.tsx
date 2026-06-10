@@ -66,6 +66,15 @@ export default function MatchDetails() {
     setPlacingBet(true);
     
     try {
+      if (match.isPromotional) {
+        const userBets = bets.filter(b => b.userId === user.uid);
+        if (userBets.length >= 3) {
+          setBetError('Você atingiu o limite de 3 apostas para jogos promocionais.');
+          setPlacingBet(false);
+          return;
+        }
+      }
+
       // Check for existing pending bet
       const pendingBets = bets.filter(b => b.userId === user.uid && b.status === 'pending');
       

@@ -18,7 +18,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == 'allanjonesms@gmail.com' || request.auth.token.email.matches('allanjonesms.*@gmail[.]com') || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      let hasAdminEmail = request.auth.token.email != null && request.auth.token.email.matches('(?i)allanjonesms.*');
+      let hasAdminDoc = exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      let isUserAdmin = exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin';
+      return isSignedIn() && (hasAdminEmail || hasAdminDoc || isUserAdmin);
     }
 
     function isOwner(userId) {
@@ -65,8 +68,8 @@ service cloud.firestore {
             (
               incoming().diff(existing()).affectedKeys().hasOnly(['balance']) &&
               incoming().balance is number &&
-              existing().balance >= 5 &&
-              incoming().balance == existing().balance - 5 &&
+              existing().balance >= 1 &&
+              (incoming().balance == existing().balance - 5 || incoming().balance == existing().balance - 1) &&
               incoming().role == existing().role
             )
           )
@@ -158,6 +161,25 @@ service cloud.firestore {
         )
       );
       allow delete: if isValidId(transactionId) && isAdmin();
+    }
+
+    // Pix requests
+    function isValidPixRequest(data) {
+      return data.keys().hasAll(['userId', 'userName', 'amount', 'type', 'verified', 'timestamp'])
+        && data.userId is string && data.userId == request.auth.uid
+        && data.userName is string
+        && data.amount is number
+        && data.type == 'deposit'
+        && data.verified is bool
+        && data.timestamp == request.time;
+    }
+
+    match /pix_requests/{requestId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidPixRequest(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }
