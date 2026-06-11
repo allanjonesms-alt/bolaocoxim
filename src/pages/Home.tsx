@@ -11,6 +11,14 @@ export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'matches'), orderBy('date', 'asc'));
@@ -52,6 +60,27 @@ export default function Home() {
     );
   }
 
+  const urgentPromotionalMatches = matches.filter(match => {
+    if (!match.isPromotional || match.status !== 'open') return false;
+    const matchDate = new Date(match.date).getTime();
+    const closingTime = matchDate - 30 * 60 * 1000;
+    const timeLeft = closingTime - now;
+    return timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000;
+  });
+
+  const normalPromotionalMatches = matches.filter(match => {
+    if (!match.isPromotional) return false;
+    if (match.status === 'open') {
+      const matchDate = new Date(match.date).getTime();
+      const closingTime = matchDate - 30 * 60 * 1000;
+      const timeLeft = closingTime - now;
+      if (timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000) return false;
+    }
+    return true;
+  });
+
+  const officialMatches = matches.filter(match => !match.isPromotional);
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-emerald-800 to-emerald-950 p-6 sm:p-8 rounded-3xl shadow-lg border border-yellow-400/20 relative overflow-hidden">
@@ -81,13 +110,109 @@ export default function Home() {
         </div>
       ) : (
         <div className="space-y-12">
-          {matches.filter(m => !m.isPromotional).length > 0 && (
+          {/* Sessão de Jogos Promocionais em Destaque (Urgentes - < 3h de expiração) */}
+          {urgentPromotionalMatches.length > 0 && (
+            <div className="bg-indigo-50/40 border border-indigo-200 rounded-3xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h2 className="text-xl font-display font-bold text-red-600 flex items-center gap-2">
+                    <span className="relative flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600"></span>
+                    </span>
+                    🚨 DESTAQUE: ÚLTIMAS HORAS PARA PALPITAR!
+                  </h2>
+                  <p className="text-slate-500 text-sm mt-1">
+                    Estes jogos promocionais se encerram em menos de 3 horas! Faça já seus palpites por apenas R$ 1,00.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {urgentPromotionalMatches.map(match => {
+                  const date = new Date(match.date);
+                  const isFinished = match.status === 'finished';
+                  const isOpen = match.status === 'open' && (date.getTime() - Date.now() >= 30 * 60 * 1000);
+
+                  return (
+                    <Link 
+                      key={match.id} 
+                      to={`/match/${match.id}`}
+                      className="group bg-gradient-to-b from-indigo-100/50 via-white to-white rounded-3xl border-2 border-red-500/70 overflow-hidden hover:border-indigo-500 hover:shadow-lg transition-all flex flex-col relative transform hover:-translate-y-1"
+                    >
+                      <div className="absolute top-0 right-0 bg-red-600 text-white font-mono text-[9px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider relative z-20 shadow-sm animate-pulse">
+                        Última Chance
+                      </div>
+                      
+                      <div className="bg-indigo-50/80 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
+                        <div className="flex flex-col items-start pr-14">
+                          <span className="text-indigo-600/80 font-bold tracking-wide text-xs">
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                          </span>
+                          <MatchCountdown matchDate={match.date} isOpen={isOpen} />
+                        </div>
+                      </div>
+                      
+                      <div className="p-8 flex-1 flex flex-col justify-center relative z-10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col items-center space-y-3 w-1/3">
+                            {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
+                              <div className="relative">
+                                 <div className="absolute inset-0 bg-slate-200 rounded-md blur"></div>
+                                 <img src={match.flag1} alt={match.team1} className="w-16 h-11 object-cover rounded-md shadow-md border border-slate-100 relative z-10" />
+                              </div>
+                             ) : (
+                              <span className="text-5xl drop-shadow-md" title={match.team1}>{match.flag1}</span>
+                            )}
+                            <span className="font-bold text-slate-800 text-center text-sm">{match.team1}</span>
+                          </div>
+                          
+                          <div className="w-1/3 flex flex-col items-center justify-center">
+                            <span className="text-red-500 font-extrabold text-sm tracking-widest uppercase animate-pulse">VS</span>
+                          </div>
+
+                          <div className="flex flex-col items-center space-y-3 w-1/3">
+                            {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
+                               <div className="relative">
+                                  <div className="absolute inset-0 bg-slate-200 rounded-md blur"></div>
+                                  <img src={match.flag2} alt={match.team2} className="w-16 h-11 object-cover rounded-md shadow-md border border-slate-100 relative z-10" />
+                               </div>
+                             ) : (
+                              <span className="text-5xl drop-shadow-md" title={match.team2}>{match.flag2}</span>
+                            )}
+                            <span className="font-bold text-slate-800 text-center text-sm">{match.team2}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-red-50/30 px-5 py-4 border-t border-red-100/50 flex justify-between items-center transition relative z-10">
+                        <div className="text-sm flex flex-col">
+                          <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Pontos p/ Classificação</span>
+                          <span className="font-bold text-indigo-600 text-sm">
+                            Até 5 pts
+                          </span>
+                        </div>
+                        <div className="text-sm flex flex-col items-end">
+                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
+                          <span className="font-bold text-red-600 font-mono text-base">
+                            R$ 1.00
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {officialMatches.length > 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center border-b border-slate-200 pb-3">
                 Jogos Oficiais 
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {matches.filter(m => !m.isPromotional).map(match => {
+                {officialMatches.map(match => {
                   const date = new Date(match.date);
                   const isFinished = match.status === 'finished';
                   const isOpen = match.status === 'open' && (date.getTime() - Date.now() >= 30 * 60 * 1000);
@@ -180,7 +305,7 @@ export default function Home() {
             </div>
           )}
 
-          {matches.filter(m => m.isPromotional).length > 0 && (
+          {normalPromotionalMatches.length > 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-indigo-800 mb-2 flex items-center gap-2">
                 🌟 Jogos Promocionais
@@ -188,7 +313,7 @@ export default function Home() {
               <p className="text-slate-500 text-sm mb-6 border-b border-indigo-100 pb-4">Estas partidas valem somente para pontuação na classificação geral. O palpite custa R$ 1,00.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {matches.filter(m => m.isPromotional).map(match => {
+                {normalPromotionalMatches.map(match => {
                   const date = new Date(match.date);
                   const isFinished = match.status === 'finished';
                   const isOpen = match.status === 'open' && (date.getTime() - Date.now() >= 30 * 60 * 1000);
