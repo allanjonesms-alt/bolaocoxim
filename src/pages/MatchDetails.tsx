@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Match, Bet } from '../types';
-import { CheckCircle2, DollarSign, Clock, Lock, User } from 'lucide-react';
+import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 
 export default function MatchDetails() {
@@ -19,6 +19,43 @@ export default function MatchDetails() {
   const [predict2, setPredict2] = useState<string>('');
   const [placingBet, setPlacingBet] = useState(false);
   const [betError, setBetError] = useState('');
+
+  const [live1, setLive1] = useState<number>(0);
+  const [live2, setLive2] = useState<number>(0);
+  const [savingLive, setSavingLive] = useState(false);
+
+  useEffect(() => {
+    if (match) {
+      setLive1(match.liveResult1 ?? 0);
+      setLive2(match.liveResult2 ?? 0);
+    }
+  }, [match?.liveResult1, match?.liveResult2]);
+
+  const handleAdjustLiveScore = (team: 1 | 2, adjustment: number) => {
+    if (team === 1) {
+      setLive1(prev => Math.max(0, prev + adjustment));
+    } else {
+      setLive2(prev => Math.max(0, prev + adjustment));
+    }
+  };
+
+  const handleSaveLiveScore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!match || savingLive) return;
+    setSavingLive(true);
+    try {
+      await updateDoc(doc(db, 'matches', match.id), {
+        liveResult1: live1,
+        liveResult2: live2
+      });
+      alert('Placar ao vivo salvo com sucesso!');
+    } catch (err: any) {
+      console.error('Error saving live score:', err);
+      alert('Erro ao salvar placar: ' + err.message);
+    } finally {
+      setSavingLive(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -262,6 +299,18 @@ export default function MatchDetails() {
                   <span className="text-slate-400">-</span>
                   <span>{match.result2}</span>
                 </div>
+              ) : (new Date(match.date).getTime() <= Date.now()) ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <span className="text-[10px] bg-red-50 text-red-600 px-3 py-1 rounded-full font-black uppercase tracking-wider animate-pulse flex items-center gap-1.5 border border-red-105">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 inline-block animate-ping"></span>
+                    Ao Vivo
+                  </span>
+                  <div className="bg-red-650 text-white px-7 py-3 rounded-2xl font-display text-4xl font-extrabold flex space-x-4 shadow-lg shadow-red-500/20">
+                    <span>{match.liveResult1 ?? 0}</span>
+                    <span className="text-red-205 opacity-80 animate-pulse">:</span>
+                    <span>{match.liveResult2 ?? 0}</span>
+                  </div>
+                </div>
               ) : (
                 <span className="text-slate-400 font-bold text-4xl tracking-widest uppercase">VS</span>
               )}
@@ -296,6 +345,97 @@ export default function MatchDetails() {
           </div>
         )}
       </div>
+
+      {profile?.role === 'admin' && match.status !== 'finished' && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950 text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl border border-yellow-400/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-yellow-400/10 rounded-full blur-[60px] pointer-events-none"></div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10 border-b border-white/10 pb-4">
+            <div>
+              <h2 className="text-lg font-display font-black text-yellow-400 flex items-center gap-2">
+                <Edit3 className="h-5 w-5 shrink-0" />
+                PAINEL DO ADMINISTRADOR: PLACAR AO VIVO
+              </h2>
+              <p className="text-slate-350 text-xs font-semibold mt-0.5">
+                Altere o placar em tempo real. Os palpites impossibilitados serão acinzentados automaticamente.
+              </p>
+            </div>
+            <span className="bg-red-500 text-white font-mono text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-white inline-block animate-ping"></span>
+              Modo Ao Vivo
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveLiveScore} className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 flex items-center justify-center gap-8 w-full">
+              {/* Team 1 Adjuster */}
+              <div className="flex flex-col items-center space-y-2">
+                <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team1}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustLiveScore(1, -1)}
+                    className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live1}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustLiveScore(1, 1)}
+                    className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* VS Divider */}
+              <span className="text-slate-500 font-black text-xl self-center pt-5">x</span>
+
+              {/* Team 2 Adjuster */}
+              <div className="flex flex-col items-center space-y-2">
+                <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team2}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustLiveScore(2, -1)}
+                    className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live2}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustLiveScore(2, 1)}
+                    className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="w-full md:w-auto shrink-0 flex flex-col sm:flex-row gap-3">
+              <button
+                type="submit"
+                disabled={savingLive}
+                className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-slate-950 font-extrabold px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition shadow-md disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {savingLive ? 'Salvando...' : 'Salvar Placar'}
+              </button>
+              
+              <Link
+                to="/admin"
+                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition border border-slate-700"
+              >
+                Controle Geral
+              </Link>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Betting Form */}
@@ -399,16 +539,44 @@ export default function MatchDetails() {
                   const numConfirmed = groupBets.filter(b => b.status === 'confirmed').length;
                   const currentPrizePerPerson = numConfirmed > 0 ? ((match.poolTotal * 0.9) / numConfirmed).toFixed(2) : '0.00';
                   
+                  const [pred1, pred2] = score.split('x').map(Number);
+                  const isStarted = new Date(match.date).getTime() <= Date.now();
+                  const isImpossible = isStarted && match.status !== 'finished' && (
+                    pred1 < (match.liveResult1 ?? 0) || pred2 < (match.liveResult2 ?? 0)
+                  );
+                  const isWinning = isStarted && match.status !== 'finished' && (
+                    pred1 === (match.liveResult1 ?? 0) && pred2 === (match.liveResult2 ?? 0)
+                  );
+                  
                   return (
-                    <div key={score} className="bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden hover:border-slate-300 transition-colors">
-                      <div className="bg-slate-100/70 px-5 py-4 flex justify-between items-center border-b border-slate-200/50">
-                        <div className="flex items-center gap-3">
+                    <div 
+                      key={score} 
+                      className={`border rounded-2xl overflow-hidden shadow-sm hover:shadow transition-all ${
+                        isImpossible 
+                          ? 'bg-slate-100/60 border-slate-205/50 opacity-40 grayscale pointer-events-none' 
+                          : isWinning
+                            ? 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-white border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500 ring-offset-2 animate-pulse'
+                            : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`px-5 py-3.5 flex justify-between items-center border-b transition-colors ${
+                        isWinning 
+                          ? 'bg-emerald-500/20 border-emerald-500/30' 
+                          : 'bg-slate-100/75 border-slate-200/50'
+                      }`}>
+                        <div className="flex items-center gap-2.5">
                           {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
                             <img src={match.flag1} alt={match.team1} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
                           ) : (
                             <span className="text-xl">{match.flag1}</span>
                           )}
-                          <div className="font-mono text-2xl font-bold text-slate-800">
+                          <div className={`font-mono text-2xl font-bold ${
+                            isImpossible 
+                              ? 'text-slate-450 line-through' 
+                              : isWinning 
+                                ? 'text-emerald-700 font-extrabold scale-105 transition-transform' 
+                                : 'text-slate-800'
+                          }`}>
                             {score.replace('x', ' - ')}
                           </div>
                           {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
@@ -416,8 +584,36 @@ export default function MatchDetails() {
                           ) : (
                             <span className="text-xl">{match.flag2}</span>
                           )}
+
+                          {isStarted && match.status !== 'finished' && (
+                            <div className="ml-1 shrink-0">
+                              {isImpossible ? (
+                                <span className="text-[8px] bg-red-105 text-red-700 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-red-200">
+                                  Inviável
+                                </span>
+                              ) : isWinning ? (
+                                <span className="text-[9px] bg-emerald-600 text-white px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-emerald-700 shadow-sm animate-bounce inline-flex items-center gap-1">
+                                  🎯 Acertando!
+                                </span>
+                              ) : (
+                                <span className="text-[8px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-200 animate-pulse">
+                                  Vivo
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {!match.isPromotional ? (
+                        {isImpossible ? (
+                          <div className="text-[10px] font-bold text-slate-500 bg-slate-200/60 border border-slate-300 px-2.5 py-1 rounded-md flex flex-col items-end">
+                            <span className="text-[8px] text-slate-450 uppercase font-black">Resultado</span>
+                            Eliminado
+                          </div>
+                        ) : isWinning ? (
+                          <div className="text-xs font-black text-white bg-emerald-600 border border-emerald-700 px-3 py-1.5 rounded-lg flex flex-col items-end shadow-sm animate-pulse">
+                            <span className="text-[9px] text-emerald-100 uppercase font-bold mb-0.5">{match.isPromotional ? 'Pontos' : 'Retorno'}</span>
+                            {match.isPromotional ? '+ Pontos' : `R$ ${currentPrizePerPerson}`}
+                          </div>
+                        ) : !match.isPromotional ? (
                           <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
                              <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
                             R$ {currentPrizePerPerson}
@@ -431,13 +627,32 @@ export default function MatchDetails() {
                       </div>
                       <div className="p-4 flex flex-wrap gap-2">
                         {groupBets.map(bet => (
-                           <div key={bet.id} className={`text-xs px-2.5 py-1.5 rounded-md flex items-center space-x-2 border transition-colors ${bet.userId === user?.uid ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200/60'}`}>
+                           <div 
+                             key={bet.id} 
+                             className={`text-xs px-2.5 py-1.5 rounded-md flex items-center space-x-2 border transition-colors ${
+                               isWinning
+                                 ? bet.userId === user?.uid 
+                                   ? 'bg-emerald-650 text-white border-emerald-700 font-semibold' 
+                                   : 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium'
+                                 : bet.userId === user?.uid 
+                                   ? 'bg-emerald-50 border-emerald-200' 
+                                   : 'bg-white border-slate-200/60'
+                             }`}
+                           >
                              {bet.status === 'confirmed' ? (
-                               <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${bet.userId === user?.uid ? 'text-emerald-600' : 'text-emerald-400'}`} />
+                               <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${
+                                 isWinning
+                                   ? bet.userId === user?.uid ? 'text-white' : 'text-emerald-600'
+                                   : bet.userId === user?.uid ? 'text-emerald-600' : 'text-emerald-400'
+                               }`} />
                              ) : (
                                <Clock className="h-3.5 w-3.5 text-orange-500 shrink-0" title="Aposta Pendente" />
                              )}
-                             <span className={`font-semibold ${bet.userId === user?.uid ? 'text-emerald-950 font-bold' : 'text-slate-650'}`}>
+                             <span className={`font-semibold ${
+                               isWinning 
+                                 ? bet.userId === user?.uid ? 'text-white font-extrabold' : 'text-emerald-950'
+                                 : bet.userId === user?.uid ? 'text-emerald-950 font-bold' : 'text-slate-650'
+                             }`}>
                                {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-500 text-[10px] font-bold uppercase ml-1">(Pendente)</span> : ''}
                              </span>
                            </div>

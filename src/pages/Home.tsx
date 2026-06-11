@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 
@@ -60,9 +60,16 @@ export default function Home() {
     );
   }
 
+  const liveMatches = matches.filter(match => {
+    if (match.status === 'finished') return false;
+    const matchDate = new Date(match.date).getTime();
+    return now >= matchDate;
+  });
+
   const urgentPromotionalMatches = matches.filter(match => {
     if (!match.isPromotional || match.status !== 'open') return false;
     const matchDate = new Date(match.date).getTime();
+    if (now >= matchDate) return false;
     const closingTime = matchDate - 30 * 60 * 1000;
     const timeLeft = closingTime - now;
     return timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000;
@@ -70,8 +77,9 @@ export default function Home() {
 
   const normalPromotionalMatches = matches.filter(match => {
     if (!match.isPromotional) return false;
+    const matchDate = new Date(match.date).getTime();
+    if (now >= matchDate) return false;
     if (match.status === 'open') {
-      const matchDate = new Date(match.date).getTime();
       const closingTime = matchDate - 30 * 60 * 1000;
       const timeLeft = closingTime - now;
       if (timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000) return false;
@@ -79,7 +87,12 @@ export default function Home() {
     return true;
   });
 
-  const officialMatches = matches.filter(match => !match.isPromotional);
+  const officialMatches = matches.filter(match => {
+    if (match.isPromotional) return false;
+    const matchDate = new Date(match.date).getTime();
+    const isLive = match.status !== 'finished' && now >= matchDate;
+    return !isLive;
+  });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -110,6 +123,104 @@ export default function Home() {
         </div>
       ) : (
         <div className="space-y-12">
+          {/* Jogos Ao Vivo / Em Andamento */}
+          {liveMatches.length > 0 && (
+            <div className="bg-gradient-to-r from-red-55/40 via-white to-red-55/40 border-2 border-red-500/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-md shadow-red-500/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-red-400/5 rounded-full blur-[60px] pointer-events-none"></div>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <h2 className="text-2xl font-display font-black text-red-650 flex items-center gap-2.5">
+                    <span className="relative flex h-4.5 w-4.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-450 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4.5 w-4.5 bg-red-650"></span>
+                    </span>
+                    <Radio className="h-6 w-6 text-red-600 shrink-0" />
+                    PARTIDAS AO VIVO / EM ANDAMENTO
+                  </h2>
+                  <p className="text-slate-500 text-sm mt-1 font-medium">
+                    Veja os placares em andamento e acompanhe a lista de palpites válidos! (Apostas encerradas)
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                {liveMatches.map(match => {
+                  const date = new Date(match.date);
+                  const isPromo = match.isPromotional;
+
+                  return (
+                    <Link
+                      key={match.id}
+                      to={`/match/${match.id}`}
+                      className="group bg-white rounded-3xl border-2 border-red-500/60 overflow-hidden hover:border-red-600 hover:shadow-lg transition-all flex flex-col relative transform hover:-translate-y-1"
+                    >
+                      {/* Live Badge */}
+                      <div className="absolute top-0 right-0 bg-red-650 text-white font-mono text-[9px] font-black px-3.5 py-1.5 rounded-bl-xl uppercase tracking-widest relative z-20 shadow-sm flex items-center gap-1 animate-pulse">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white inline-block"></span>
+                        AO VIVO
+                      </div>
+
+                      <div className="bg-red-50/50 px-5 py-3.5 border-b border-red-100 flex items-center justify-between text-sm relative z-10 pr-24">
+                        <span className="text-red-700 font-extrabold text-xs flex items-center gap-1.5">
+                          {isPromo ? '🌟 Jogo Promocional' : '⚽ Jogo Oficial'}
+                        </span>
+                      </div>
+
+                      <div className="p-8 flex-1 flex flex-col justify-center relative z-10">
+                        <div className="flex items-center justify-between">
+                          {/* Team 1 */}
+                          <div className="flex flex-col items-center space-y-3 w-1/3">
+                            {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-slate-200 rounded-md blur"></div>
+                                <img src={match.flag1} alt={match.team1} className="w-16 h-11 object-cover rounded-md shadow-md border border-slate-100 relative z-10" />
+                              </div>
+                            ) : (
+                              <span className="text-5xl drop-shadow-md" title={match.team1}>{match.flag1}</span>
+                            )}
+                            <span className="font-extrabold text-slate-800 text-center text-sm truncate w-full">{match.team1}</span>
+                          </div>
+
+                          {/* Live Score Display */}
+                          <div className="w-1/3 flex flex-col items-center justify-center">
+                            <span className="text-[9px] text-red-500 font-black uppercase tracking-wider mb-2">PLACAR</span>
+                            <div className="bg-red-600 text-white px-4.5 py-2 rounded-xl font-display text-2xl font-black flex space-x-2.5 shadow-md shadow-red-500/20">
+                              <span>{match.liveResult1 ?? 0}</span>
+                              <span className="text-red-305 opacity-85 animate-pulse">:</span>
+                              <span>{match.liveResult2 ?? 0}</span>
+                            </div>
+                          </div>
+
+                          {/* Team 2 */}
+                          <div className="flex flex-col items-center space-y-3 w-1/3">
+                            {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
+                              <div className="relative">
+                                <div className="absolute inset-0 bg-slate-200 rounded-md blur"></div>
+                                <img src={match.flag2} alt={match.team2} className="w-16 h-11 object-cover rounded-md shadow-md border border-slate-100 relative z-10" />
+                              </div>
+                            ) : (
+                              <span className="text-5xl drop-shadow-md" title={match.team2}>{match.flag2}</span>
+                            )}
+                            <span className="font-extrabold text-slate-800 text-center text-sm truncate w-full">{match.team2}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-red-55/10 px-5 py-4 border-t border-red-100/50 flex justify-between items-center transition relative z-10">
+                        <div className="text-xs flex flex-col text-slate-400">
+                          <span className="font-semibold">{date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="text-xs font-bold text-red-650 flex items-center gap-0.5 bg-red-50 border border-red-100 px-2.5 py-1.5 rounded-xl group-hover:bg-red-600 group-hover:text-white transition">
+                          Acompanhar <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Sessão de Jogos Promocionais em Destaque (Urgentes - < 3h de expiração) */}
           {urgentPromotionalMatches.length > 0 && (
             <div className="bg-indigo-50/40 border border-indigo-200 rounded-3xl p-6 sm:p-8 space-y-6">
@@ -147,7 +258,7 @@ export default function Home() {
                       <div className="bg-indigo-50/80 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start pr-14">
                           <span className="text-indigo-600/80 font-bold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>
@@ -229,7 +340,7 @@ export default function Home() {
                       <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start">
                           <span className="text-slate-500 font-semibold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>
@@ -327,7 +438,7 @@ export default function Home() {
                       <div className="bg-indigo-100/50 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start">
                           <span className="text-indigo-600/80 font-semibold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} (UTC -4:00)
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>
