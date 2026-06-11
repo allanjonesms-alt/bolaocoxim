@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Match, Bet } from '../types';
-import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 
 export default function MatchDetails() {
@@ -23,6 +23,8 @@ export default function MatchDetails() {
   const [live1, setLive1] = useState<number>(0);
   const [live2, setLive2] = useState<number>(0);
   const [savingLive, setSavingLive] = useState(false);
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     if (match) {
@@ -54,6 +56,98 @@ export default function MatchDetails() {
       alert('Erro ao salvar placar: ' + err.message);
     } finally {
       setSavingLive(false);
+    }
+  };
+
+  const handleFinalizeMatch = async () => {
+    if (!match || finalizing) return;
+    setFinalizing(true);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const matchRef = doc(db, 'matches', match.id);
+        
+        const betsQuery = query(collection(db, 'bets'), where('matchId', '==', match.id), where('status', '==', 'confirmed'));
+        const betsDocs = await getDocs(betsQuery);
+        
+        const winners: any[] = [];
+        const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
+        
+        betsDocs.forEach(b => {
+          const p1 = b.data().predicted1;
+          const p2 = b.data().predicted2;
+          
+          let points = 0;
+          let isWinner = false;
+          
+          const matchRealOutcome = live1 > live2 ? 1 : (live1 < live2 ? 2 : 0);
+          const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
+
+          if (p1 === live1 && p2 === live2) {
+            points = 5;
+            isWinner = true;
+          } else if (p1 === live1 || p2 === live2) {
+            points = 3;
+          } else if (matchRealOutcome === betOutcome) {
+            points = 1;
+          }
+
+          if (isWinner) {
+            winners.push(b);
+          }
+          updateBets.push({ ref: doc(db, 'bets', b.id), points, isWinner });
+        });
+
+        const prizePool = match.poolTotal * 0.9;
+        const prizePerWinner = winners.length > 0 ? prizePool / winners.length : 0;
+
+        transaction.update(matchRef, { 
+          status: 'finished', 
+          result1: live1, 
+          result2: live2,
+          liveResult1: live1,
+          liveResult2: live2
+        });
+        
+        for (const up of updateBets) {
+           transaction.update(up.ref, { 
+             points: up.points, 
+             is_winner: up.isWinner,
+             prize_collected: up.isWinner ? prizePerWinner : 0
+           });
+        }
+        
+        if (winners.length > 0) {
+          const userPrizes: Record<string, number> = {};
+          winners.forEach(w => {
+            const uid = w.data().userId;
+            userPrizes[uid] = (userPrizes[uid] || 0) + prizePerWinner;
+          });
+          
+          for (const uid in userPrizes) {
+            const uRef = doc(db, 'users', uid);
+            const uDoc = await transaction.get(uRef);
+            if (uDoc.exists()) {
+               transaction.update(uRef, { balance: uDoc.data().balance + userPrizes[uid] });
+               
+               const tRef = doc(collection(db, 'transactions'));
+               transaction.set(tRef, {
+                 userId: uid,
+                 type: 'prize',
+                 amount: userPrizes[uid],
+                 status: 'confirmed',
+                 timestamp: serverTimestamp()
+               });
+            }
+          }
+        }
+      });
+      setShowConfirmEnd(false);
+      alert('Partida finalizada e prêmios distribuídos com sucesso!');
+    } catch (err: any) {
+      console.error('Error finalizing match:', err);
+      alert('Erro ao finalizar partida: ' + err.message);
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -353,10 +447,10 @@ export default function MatchDetails() {
             <div>
               <h2 className="text-lg font-display font-black text-yellow-400 flex items-center gap-2">
                 <Edit3 className="h-5 w-5 shrink-0" />
-                PAINEL DO ADMINISTRADOR: PLACAR AO VIVO
+                PAINEL DO ADMINISTRADOR: CONTROLE EM TEMPO REAL
               </h2>
               <p className="text-slate-350 text-xs font-semibold mt-0.5">
-                Altere o placar em tempo real. Os palpites impossibilitados serão acinzentados automaticamente.
+                Atualize o placar em tempo real ou encerre definitivamente a partida para consolidar resultados.
               </p>
             </div>
             <span className="bg-red-500 text-white font-mono text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
@@ -365,75 +459,124 @@ export default function MatchDetails() {
             </span>
           </div>
 
-          <form onSubmit={handleSaveLiveScore} className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1 flex items-center justify-center gap-8 w-full">
-              {/* Team 1 Adjuster */}
-              <div className="flex flex-col items-center space-y-2">
-                <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team1}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustLiveScore(1, -1)}
-                    className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
-                  >
-                    -
-                  </button>
-                  <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live1}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustLiveScore(1, 1)}
-                    className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
-                  >
-                    +
-                  </button>
+          {showConfirmEnd ? (
+            <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-6 space-y-4 animate-fade-in relative z-20">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-6 w-6 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-base text-red-200">CONFIRMAR ENCERRAMENTO DA PARTIDA</h3>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed mt-1">
+                    Você está prestes a encerrar oficialmente a partida com o placar final de:
+                  </p>
+                  <div className="inline-flex items-center gap-3 bg-red-500/20 px-4 py-2 rounded-xl mt-3 border border-red-500/30">
+                    <span className="font-bold text-sm text-white">{match.team1}</span>
+                    <span className="font-mono text-xl font-extrabold text-red-400">{live1} : {live2}</span>
+                    <span className="font-bold text-sm text-white">{match.team2}</span>
+                  </div>
+                  <p className="text-[11px] text-red-400/90 font-semibold mt-3">
+                    ⚠️ ATENÇÃO: Esta ação é definitiva e irreversível! Todos os palpites serão avaliados,
+                    os pontos computados no ranking, e os ganhadores receberão sua parte proporcional do prêmio de <strong className="text-white">R$ {(match.poolTotal * 0.9).toFixed(2)}</strong>.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmEnd(false)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 transition"
+                >
+                  Continuar Partida
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFinalizeMatch}
+                  disabled={finalizing}
+                  className="px-6 py-2.5 rounded-xl bg-red-650 hover:bg-red-550 text-xs font-black text-white transition flex items-center justify-center gap-1.5 shadow-md shadow-red-500/10 disabled:opacity-50 animate-pulse"
+                >
+                  {finalizing ? 'Processando...' : 'Confirmar Encerramento e Distribuir Prêmios'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveLiveScore} className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1 flex items-center justify-center gap-8 w-full">
+                {/* Team 1 Adjuster */}
+                <div className="flex flex-col items-center space-y-2">
+                  <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team1}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustLiveScore(1, -1)}
+                      className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live1}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustLiveScore(1, 1)}
+                      className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* VS Divider */}
+                <span className="text-slate-500 font-black text-xl self-center pt-5">x</span>
+
+                {/* Team 2 Adjuster */}
+                <div className="flex flex-col items-center space-y-2">
+                  <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team2}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustLiveScore(2, -1)}
+                      className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
+                    >
+                      -
+                    </button>
+                    <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live2}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustLiveScore(2, 1)}
+                      className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* VS Divider */}
-              <span className="text-slate-500 font-black text-xl self-center pt-5">x</span>
+              {/* Action Buttons */}
+              <div className="w-full md:w-auto shrink-0 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="submit"
+                  disabled={savingLive}
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-250 border border-slate-700 font-bold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition"
+                >
+                  <Save className="h-4 w-4" />
+                  {savingLive ? 'Salvando...' : 'Salvar Placar'}
+                </button>
 
-              {/* Team 2 Adjuster */}
-              <div className="flex flex-col items-center space-y-2">
-                <span className="text-xs text-slate-300 font-bold tracking-wide truncate max-w-[120px]">{match.team2}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustLiveScore(2, -1)}
-                    className="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-xl font-bold flex items-center justify-center border border-slate-700 transition"
-                  >
-                    -
-                  </button>
-                  <span className="font-mono text-4xl font-extrabold w-12 text-center text-white">{live2}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustLiveScore(2, 1)}
-                    className="w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xl font-bold flex items-center justify-center border border-emerald-500 transition"
-                  >
-                    +
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmEnd(true)}
+                  className="w-full sm:w-auto bg-red-600 hover:bg-red-500 active:scale-95 text-white font-extrabold px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition shadow-md shadow-red-500/20"
+                >
+                  <Trophy className="h-4 w-4" />
+                  Encerrar Partida
+                </button>
+                
+                <Link
+                  to="/admin"
+                  className="w-full sm:w-auto bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-slate-200 font-semibold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition border border-slate-800/80"
+                >
+                  Controle Geral
+                </Link>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="w-full md:w-auto shrink-0 flex flex-col sm:flex-row gap-3">
-              <button
-                type="submit"
-                disabled={savingLive}
-                className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-slate-950 font-extrabold px-6 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition shadow-md disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {savingLive ? 'Salvando...' : 'Salvar Placar'}
-              </button>
-              
-              <Link
-                to="/admin"
-                className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm transition border border-slate-700"
-              >
-                Controle Geral
-              </Link>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       )}
 

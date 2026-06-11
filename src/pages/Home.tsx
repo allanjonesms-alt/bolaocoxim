@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 
@@ -12,12 +12,50 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [leader, setLeader] = useState<{ userName: string; points: number } | null>(null);
+  const [totalPrizePool, setTotalPrizePool] = useState<number>(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
     }, 30000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // We get all bets to calculate leaderboard summary on Home in real-time
+    const q = query(collection(db, 'bets'));
+    const unsubscribeBets = onSnapshot(q, (snapshot) => {
+      let totalAmount = 0;
+      const scores: Record<string, { userName: string, points: number }> = {};
+      
+      snapshot.docs.forEach(doc => {
+        const bet = doc.data();
+        if (bet.status !== 'confirmed') return;
+        totalAmount += bet.amount;
+        if (!scores[bet.userId]) {
+          scores[bet.userId] = { userName: bet.userName, points: 0 };
+        }
+        scores[bet.userId].points += (bet.points || 0);
+      });
+      
+      const rows = Object.keys(scores).map(userId => ({
+        userId,
+        userName: scores[userId].userName,
+        points: scores[userId].points
+      })).sort((a, b) => b.points - a.points);
+      
+      setTotalPrizePool(totalAmount * 0.02);
+      if (rows.length > 0) {
+        setLeader(rows[0]);
+      } else {
+        setLeader(null);
+      }
+    }, (error) => {
+      console.error("Error loading home leaderboard summary:", error);
+    });
+
+    return () => unsubscribeBets();
   }, []);
 
   useEffect(() => {
@@ -109,6 +147,65 @@ export default function Home() {
           >
             <Trophy className="h-4 w-4 mr-2" />
             Classificação Geral
+          </Link>
+        </div>
+      </div>
+
+      {/* Seção de Classificação Geral Premium */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card do Líder */}
+        <div className="bg-gradient-to-br from-amber-500/10 via-white to-white border border-yellow-500/30 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-400/10 transition-all"></div>
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="bg-yellow-100 border border-yellow-300 p-3.5 rounded-2xl">
+              <Crown className="h-7 w-7 text-yellow-600 animate-pulse" />
+            </div>
+            <div>
+              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                Líder da Classificação
+              </span>
+              <h3 className="font-display font-black text-xl text-slate-800 mt-1 truncate max-w-[200px] sm:max-w-[250px]">
+                {leader ? leader.userName : 'Sem registro'}
+              </h3>
+              <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1">
+                <Trophy className="h-3 w-3 text-slate-400 shrink-0" />
+                {leader ? `${leader.points} pontos acumulados` : 'Faça palpites para pontuar'}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/leaderboard"
+            className="bg-slate-50 hover:bg-yellow-400 border border-slate-200/85 hover:border-yellow-400 hover:text-slate-950 p-2.5 rounded-xl transition-all shadow-sm"
+          >
+            <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
+          </Link>
+        </div>
+
+        {/* Card do Prêmio Acumulado */}
+        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-400/10 transition-all"></div>
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl">
+              <Trophy className="h-7 w-7 text-emerald-600" />
+            </div>
+            <div>
+              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                Prêmio Acumulado Rank 1
+              </span>
+              <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1">
+                R$ {totalPrizePool.toFixed(2)}
+              </h3>
+              <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                Entrega em <strong className="text-slate-700">19/07 (Final da Copa)</strong>
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/leaderboard"
+            className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2.5 rounded-xl transition-all shadow-sm"
+          >
+            <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
           </Link>
         </div>
       </div>
@@ -296,13 +393,7 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      <div className="bg-red-50/30 px-5 py-4 border-t border-red-100/50 flex justify-between items-center transition relative z-10">
-                        <div className="text-sm flex flex-col">
-                          <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Pontos p/ Classificação</span>
-                          <span className="font-bold text-indigo-600 text-sm">
-                            Até 5 pts
-                          </span>
-                        </div>
+                      <div className="bg-red-50/30 px-5 py-4 border-t border-red-100/50 flex justify-end items-center transition relative z-10">
                         <div className="text-sm flex flex-col items-end">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-red-600 font-mono text-base">
@@ -496,13 +587,7 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      <div className="bg-indigo-50/80 px-5 py-4 border-t border-indigo-100 flex justify-between items-center transition relative z-10">
-                        <div className="text-sm flex flex-col">
-                          <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Pontos p/ Classificação</span>
-                          <span className="font-bold text-indigo-600 text-sm">
-                            Até 5 pts
-                          </span>
-                        </div>
+                      <div className="bg-indigo-50/80 px-5 py-4 border-t border-indigo-100 flex justify-end items-center transition relative z-10">
                         <div className="text-sm flex flex-col items-end">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-indigo-700 font-mono text-base">
