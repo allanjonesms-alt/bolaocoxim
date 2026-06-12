@@ -420,10 +420,30 @@ export default function AdminUsers() {
                         let pointsLabel = '-';
                         let pointsClass = 'text-slate-500 bg-slate-100 border-slate-200';
                         if (match.status === 'finished' && bet.status === 'confirmed') {
-                          if (bet.points === 5) { pointsLabel = 'Exato (+5)'; pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200'; }
-                          else if (bet.points === 3) { pointsLabel = 'Vencedor+ (+3)'; pointsClass = 'text-blue-700 bg-blue-50 border-blue-200'; }
-                          else if (bet.points === 1) { pointsLabel = 'Vencedor (+1)'; pointsClass = 'text-amber-700 bg-amber-50 border-amber-200'; }
-                          else { pointsLabel = 'Errou (0)'; pointsClass = 'text-red-700 bg-red-50 border-red-200'; }
+                          const pts = bet.points ?? 0;
+                          if (pts === 15 || pts === 5) {
+                            pointsLabel = `Exato (+${pts})`;
+                            pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+                          } else if (pts === 9 || pts === 3) {
+                            if (pts === 9) {
+                              pointsLabel = 'Placar parcial (+9)';
+                              pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
+                            } else if (pts === 3) {
+                              if (match.isPromotional) {
+                                pointsLabel = 'Placar parcial (+3)';
+                                pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
+                              } else {
+                                pointsLabel = 'Vencedor (+3)';
+                                pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
+                              }
+                            }
+                          } else if (pts === 1) {
+                            pointsLabel = 'Vencedor (+1)';
+                            pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
+                          } else {
+                            pointsLabel = 'Errou (0)';
+                            pointsClass = 'text-red-700 bg-red-50 border-red-200';
+                          }
                         }
 
                         return (

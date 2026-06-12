@@ -459,6 +459,7 @@ export default function AdminPanel() {
         const winners: any[] = [];
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
+        const isPromotional = !!match.isPromotional;
         betsDocs.forEach(b => {
           const p1 = b.data().predicted1;
           const p2 = b.data().predicted2;
@@ -470,12 +471,12 @@ export default function AdminPanel() {
           const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
 
           if (p1 === res1 && p2 === res2) {
-            points = 5;
+            points = isPromotional ? 5 : 15;
             isWinner = true;
           } else if (p1 === res1 || p2 === res2) {
-            points = 3;
+            points = isPromotional ? 3 : 9;
           } else if (matchRealOutcome === betOutcome) {
-            points = 1;
+            points = isPromotional ? 1 : 3;
           }
 
           if (isWinner) {
