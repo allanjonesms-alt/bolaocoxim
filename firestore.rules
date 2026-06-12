@@ -18,10 +18,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      let hasAdminEmail = request.auth.token.email != null && request.auth.token.email.matches('(?i)allanjonesms.*');
-      let hasAdminDoc = exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-      let isUserAdmin = exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin';
-      return isSignedIn() && (hasAdminEmail || hasAdminDoc || isUserAdmin);
+      return isSignedIn() && (
+        (request.auth.token.email != null && request.auth.token.email.matches('(?i)allanjonesms.*')) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
+      );
     }
 
     function isOwner(userId) {
