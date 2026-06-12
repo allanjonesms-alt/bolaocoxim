@@ -4,7 +4,7 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimest
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Match, Bet } from '../types';
-import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy } from 'lucide-react';
+import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy, Check, X } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 
 export default function MatchDetails() {
@@ -25,6 +25,13 @@ export default function MatchDetails() {
   const [savingLive, setSavingLive] = useState(false);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     if (match) {
@@ -50,10 +57,10 @@ export default function MatchDetails() {
         liveResult1: live1,
         liveResult2: live2
       });
-      alert('Placar ao vivo salvo com sucesso!');
+      showToast('Placar ao vivo salvo com sucesso!', 'success');
     } catch (err: any) {
       console.error('Error saving live score:', err);
-      alert('Erro ao salvar placar: ' + err.message);
+      showToast('Erro ao salvar placar: ' + err.message, 'error');
     } finally {
       setSavingLive(false);
     }
@@ -63,12 +70,16 @@ export default function MatchDetails() {
     if (!match || finalizing) return;
     setFinalizing(true);
     try {
+      const matchRef = doc(db, 'matches', match.id);
+      const betsQuery = query(collection(db, 'bets'), where('matchId', '==', match.id), where('status', '==', 'confirmed'));
+      const betsDocs = await getDocs(betsQuery);
+
       await runTransaction(db, async (transaction) => {
-        const matchRef = doc(db, 'matches', match.id);
-        
-        const betsQuery = query(collection(db, 'bets'), where('matchId', '==', match.id), where('status', '==', 'confirmed'));
-        const betsDocs = await getDocs(betsQuery);
-        
+        const matchDoc = await transaction.get(matchRef);
+        if (!matchDoc.exists() || matchDoc.data().status === 'finished') {
+          throw new Error('A partida já foi finalizada ou não existe.');
+        }
+
         const winners: any[] = [];
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
@@ -97,9 +108,27 @@ export default function MatchDetails() {
           updateBets.push({ ref: doc(db, 'bets', b.id), points, isWinner });
         });
 
-        const prizePool = match.poolTotal * 0.9;
+        const prizePool = match.isPromotional ? 0 : match.poolTotal * 0.9;
         const prizePerWinner = winners.length > 0 ? prizePool / winners.length : 0;
 
+        const userPrizes: Record<string, number> = {};
+        winners.forEach(w => {
+          const uid = w.data().userId;
+          if (prizePerWinner > 0) {
+            userPrizes[uid] = (userPrizes[uid] || 0) + prizePerWinner;
+          }
+        });
+
+        const uDocsMap: Record<string, any> = {};
+        for (const uid in userPrizes) {
+          const uRef = doc(db, 'users', uid);
+          const uDoc = await transaction.get(uRef);
+          if (uDoc.exists()) {
+             uDocsMap[uid] = uDoc.data();
+          }
+        }
+
+        // WRITE PHASE
         transaction.update(matchRef, { 
           status: 'finished', 
           result1: live1, 
@@ -116,36 +145,27 @@ export default function MatchDetails() {
            });
         }
         
-        if (winners.length > 0) {
-          const userPrizes: Record<string, number> = {};
-          winners.forEach(w => {
-            const uid = w.data().userId;
-            userPrizes[uid] = (userPrizes[uid] || 0) + prizePerWinner;
-          });
-          
-          for (const uid in userPrizes) {
-            const uRef = doc(db, 'users', uid);
-            const uDoc = await transaction.get(uRef);
-            if (uDoc.exists()) {
-               transaction.update(uRef, { balance: uDoc.data().balance + userPrizes[uid] });
-               
-               const tRef = doc(collection(db, 'transactions'));
-               transaction.set(tRef, {
-                 userId: uid,
-                 type: 'prize',
-                 amount: userPrizes[uid],
-                 status: 'confirmed',
-                 timestamp: serverTimestamp()
-               });
-            }
+        for (const uid in userPrizes) {
+          if (uDocsMap[uid]) {
+             const uRef = doc(db, 'users', uid);
+             transaction.update(uRef, { balance: uDocsMap[uid].balance + userPrizes[uid] });
+             
+             const tRef = doc(collection(db, 'transactions'));
+             transaction.set(tRef, {
+               userId: uid,
+               type: 'prize',
+               amount: userPrizes[uid],
+               status: 'confirmed',
+               timestamp: serverTimestamp()
+             });
           }
         }
       });
       setShowConfirmEnd(false);
-      alert('Partida finalizada e prêmios distribuídos com sucesso!');
+      showToast('Partida finalizada e prêmios distribuídos com sucesso!', 'success');
     } catch (err: any) {
       console.error('Error finalizing match:', err);
-      alert('Erro ao finalizar partida: ' + err.message);
+      showToast('Erro ao finalizar partida: ' + err.message, 'error');
     } finally {
       setFinalizing(false);
     }
@@ -199,8 +219,8 @@ export default function MatchDetails() {
     try {
       if (match.isPromotional) {
         const userBets = bets.filter(b => b.userId === user.uid);
-        if (userBets.length >= 3) {
-          setBetError('Você atingiu o limite de 3 apostas para jogos promocionais.');
+        if (userBets.length >= 2) {
+          setBetError('Você atingiu o limite de 2 apostas para jogos promocionais.');
           setPlacingBet(false);
           return;
         }
@@ -270,9 +290,9 @@ export default function MatchDetails() {
       setPredict1('');
       setPredict2('');
       if (hasBalance) {
-        alert('Sua aposta foi registrada com sucesso e aprovada automaticamente pelo sistema.');
+        showToast('Sua aposta foi registrada com sucesso e aprovada automaticamente pelo sistema.', 'success');
       } else {
-        alert(`Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ ${betAmount.toFixed(2)}). Adicione créditos no seu painel para ser homologada.`);
+        showToast(`Sua aposta foi registrada como PENDENTE pois você não possui saldo suficiente (R$ ${betAmount.toFixed(2)}). Adicione créditos no seu painel para ser homologada.`, 'warning');
       }
 
     } catch (err: any) {
@@ -354,6 +374,28 @@ export default function MatchDetails() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm animate-in slide-in-from-top-10 fade-in duration-300">
+          <div className={`p-2 rounded-xl shadow-xl ${toast.type === 'success' ? 'bg-emerald-50' : toast.type === 'warning' ? 'bg-amber-50' : 'bg-red-50'}`}>
+            <div className={`flex items-start gap-4 p-4 border rounded-lg bg-white ${toast.type === 'success' ? 'border-emerald-200' : toast.type === 'warning' ? 'border-amber-200' : 'border-red-200'}`}>
+              <div className={`p-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-100' : toast.type === 'warning' ? 'bg-amber-100' : 'bg-red-100'}`}>
+                {toast.type === 'success' ? <Check className="w-5 h-5 text-emerald-600" /> : toast.type === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-600" /> : <X className="w-5 h-5 text-red-600" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {toast.type === 'success' ? 'Sucesso' : toast.type === 'warning' ? 'Aviso' : 'Erro'}
+                </p>
+                <p className="text-sm font-bold text-slate-800 leading-tight">{toast.message}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer" title="Fechar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Match Header */}
       <div className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none"></div>
@@ -491,7 +533,7 @@ export default function MatchDetails() {
                   type="button"
                   onClick={handleFinalizeMatch}
                   disabled={finalizing}
-                  className="px-6 py-2.5 rounded-xl bg-red-650 hover:bg-red-550 text-xs font-black text-white transition flex items-center justify-center gap-1.5 shadow-md shadow-red-500/10 disabled:opacity-50 animate-pulse"
+                  className="px-6 py-2.5 rounded-xl bg-red-650 hover:bg-red-550 text-xs font-black text-white transition flex items-center justify-center gap-1.5 shadow-md shadow-red-500/10 disabled:opacity-50"
                 >
                   {finalizing ? 'Processando...' : 'Confirmar Encerramento e Distribuir Prêmios'}
                 </button>
@@ -609,14 +651,14 @@ export default function MatchDetails() {
                   Entrar / Criar Conta
                 </Link>
               </div>
-            ) : match.isPromotional && bets.filter(b => b.userId === user.uid).length >= 3 ? (
+            ) : match.isPromotional && bets.filter(b => b.userId === user.uid).length >= 2 ? (
               <div className="bg-indigo-50 border border-indigo-200 text-slate-700 font-medium p-6 sm:p-7 rounded-2xl text-center text-sm flex flex-col items-center gap-3 animate-fade-in">
                 <div className="bg-indigo-100 p-3 rounded-full text-indigo-700">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <p className="font-bold text-base text-slate-800">Limite de Apostas Atingido</p>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Você já registrou os 3 palpites permitidos para esta partida promocional.
+                  Você já registrou os 2 palpites permitidos para esta partida promocional.
                 </p>
               </div>
             ) : (

@@ -3,7 +3,7 @@ import { collection, query, onSnapshot, doc, getDocs, where, runTransaction, ser
 import { db } from '../lib/firebase';
 import { UserProfile, Transaction, Bet, Match } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { ArrowLeft, Edit, Wallet, Check, X, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, Wallet, Check, X, AlertTriangle, Clock, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function AdminUsers() {
@@ -21,6 +21,7 @@ export default function AdminUsers() {
   const [editUserName, setEditUserName] = useState('');
   const [editUserPhone, setEditUserPhone] = useState('');
   const [savingUserData, setSavingUserData] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -139,6 +140,12 @@ export default function AdminUsers() {
 
   if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Carregando usuários...</div>;
 
+  const filteredUsers = users.filter(u => 
+    (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.phone || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in relative pb-16">
       
@@ -172,6 +179,19 @@ export default function AdminUsers() {
       </div>
 
       <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
+        <div className="mb-6">
+          <div className="relative max-w-md">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+             <input
+               type="text"
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               placeholder="Buscar usuário por nome, email ou celular..."
+               className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 text-sm font-medium transition-all"
+             />
+          </div>
+        </div>
+
         <div className="overflow-x-auto custom-scrollbar border border-slate-150 rounded-2xl">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -185,12 +205,14 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm text-slate-600 bg-white">
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">Nenhum usuário cadastrado.</td>
+                  <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
+                    {searchQuery ? 'Nenhum usuário encontrado na busca.' : 'Nenhum usuário cadastrado.'}
+                  </td>
                 </tr>
               ) : (
-                users.map(u => (
+                filteredUsers.map(u => (
                   <tr key={u.id} className="hover:bg-slate-50/55 transition-colors">
                     <td className="py-3.5 px-5 font-bold text-slate-800">{u.name}</td>
                     <td className="py-3.5 px-5 text-slate-500 select-all font-medium">{u.email}</td>

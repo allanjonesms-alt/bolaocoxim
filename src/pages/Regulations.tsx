@@ -183,7 +183,7 @@ export default function Regulations() {
                 O custo para registrar um palpite nesta modalidade é de apenas <strong>R$ 1,00</strong>.
               </p>
               <p>
-                Cada usuário tem um limite máximo de <strong>3 apostas</strong> por partida em jogos promocionais. Metade dos valores arrecadados nessas partidas são adicionados ao caixa para a grande premiação da Classificação Geral!
+                Cada usuário tem um limite máximo de <strong>2 apostas</strong> por partida em jogos promocionais. Metade dos valores arrecadados nessas partidas são adicionados ao caixa para a grande premiação da Classificação Geral!
               </p>
             </div>
           </div>

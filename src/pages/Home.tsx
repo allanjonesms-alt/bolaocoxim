@@ -26,13 +26,19 @@ export default function Home() {
     // We get all bets to calculate leaderboard summary on Home in real-time
     const q = query(collection(db, 'bets'));
     const unsubscribeBets = onSnapshot(q, (snapshot) => {
-      let totalAmount = 0;
+      let calculatedPrizePool = 0;
       const scores: Record<string, { userName: string, points: number }> = {};
       
       snapshot.docs.forEach(doc => {
         const bet = doc.data();
         if (bet.status !== 'confirmed') return;
-        totalAmount += bet.amount;
+        
+        if (bet.amount === 1) {
+          calculatedPrizePool += bet.amount * 0.50;
+        } else {
+          calculatedPrizePool += bet.amount * 0.02;
+        }
+
         if (!scores[bet.userId]) {
           scores[bet.userId] = { userName: bet.userName, points: 0 };
         }
@@ -45,7 +51,7 @@ export default function Home() {
         points: scores[userId].points
       })).sort((a, b) => b.points - a.points);
       
-      setTotalPrizePool(totalAmount * 0.02);
+      setTotalPrizePool(calculatedPrizePool);
       if (rows.length > 0) {
         setLeader(rows[0]);
       } else {
@@ -205,7 +211,7 @@ export default function Home() {
                 Prêmio Estimado Rank 1
               </span>
               <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1">
-                R$ {(totalPrizePool * 80).toFixed(2)}
+                R$ {(totalPrizePool * 30).toFixed(2)}
               </h3>
               <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />

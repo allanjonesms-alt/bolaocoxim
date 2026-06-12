@@ -22,13 +22,19 @@ export default function Leaderboard() {
     // In production with thousands of users, you'd maintain a `total_points` field on the user profile.
     const betsQuery = query(collection(db, 'bets'));
     const unsubscribeBets = onSnapshot(betsQuery, (snapshot) => {
-      let totalAmount = 0;
+      let calculatedPrizePool = 0;
       const scores: Record<string, { userName: string, points: number }> = {};
       
       snapshot.docs.forEach(doc => {
         const bet = doc.data();
         if (bet.status !== 'confirmed') return;
-        totalAmount += bet.amount;
+        
+        if (bet.amount === 1) {
+          calculatedPrizePool += bet.amount * 0.50;
+        } else {
+          calculatedPrizePool += bet.amount * 0.02;
+        }
+
         if (!scores[bet.userId]) {
           scores[bet.userId] = { userName: bet.userName, points: 0 };
         }
@@ -41,7 +47,7 @@ export default function Leaderboard() {
         points: scores[userId].points
       })).sort((a, b) => b.points - a.points);
       
-      setPrizePool(totalAmount * 0.02); // 2% of total bets
+      setPrizePool(calculatedPrizePool);
       setBoard(rows);
       setError(null);
       setLoading(false);
@@ -90,15 +96,12 @@ export default function Leaderboard() {
           <h1 className="text-4xl font-display font-bold mb-3 tracking-tight flex justify-center items-center">
             Classificação <span className="text-yellow-400 ml-3">Geral</span>
           </h1>
-          <p className="text-emerald-100/80 max-w-xl mx-auto mb-8 font-medium">
-            O primeiro colocado conquistará 2% de todas as apostas realizadas ao final da competição!
-          </p>
-          <div className="inline-flex flex-col bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner items-center">
+          <div className="inline-flex flex-col bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner items-center mt-6">
             <span className="text-emerald-200/60 text-xs uppercase tracking-widest block mb-1 font-sans">Prêmio Acumulado Rank 1</span>
             <span className="text-yellow-400 text-4xl">R$ {prizePool.toFixed(2)}</span>
             <div className="mt-4 pt-4 border-t border-emerald-800/50 w-full text-center">
               <span className="text-emerald-300 text-[10px] uppercase tracking-widest block mb-1 font-sans">Prêmio Estimado*</span>
-              <span className="text-emerald-400 text-xl font-black">R$ {(prizePool * 80).toFixed(2)}</span>
+              <span className="text-emerald-400 text-xl font-black">R$ {(prizePool * 30).toFixed(2)}</span>
             </div>
           </div>
         </div>
