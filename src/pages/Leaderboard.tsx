@@ -93,9 +93,13 @@ export default function Leaderboard() {
           <p className="text-emerald-100/80 max-w-xl mx-auto mb-8 font-medium">
             O primeiro colocado conquistará 2% de todas as apostas realizadas ao final da competição!
           </p>
-          <div className="inline-block bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner">
+          <div className="inline-flex flex-col bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner items-center">
             <span className="text-emerald-200/60 text-xs uppercase tracking-widest block mb-1 font-sans">Prêmio Acumulado Rank 1</span>
             <span className="text-yellow-400 text-4xl">R$ {prizePool.toFixed(2)}</span>
+            <div className="mt-4 pt-4 border-t border-emerald-800/50 w-full text-center">
+              <span className="text-emerald-300 text-[10px] uppercase tracking-widest block mb-1 font-sans">Prêmio Estimado*</span>
+              <span className="text-emerald-400 text-xl font-black">R$ {(prizePool * 80).toFixed(2)}</span>
+            </div>
           </div>
         </div>
       </div>

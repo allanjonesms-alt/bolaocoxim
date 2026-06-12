@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 
@@ -151,6 +151,18 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Dica de Ouro de Jogos Promocionais */}
+      <div id="promotional-games-tip" className="bg-gradient-to-r from-yellow-500/10 via-amber-500/5 to-white border border-amber-300/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-400/5 rounded-full blur-xl pointer-events-none"></div>
+        <div className="bg-amber-100 border border-amber-300 p-2 rounded-xl shrink-0">
+          <Lightbulb className="h-5 w-5 text-amber-600 animate-pulse" />
+        </div>
+        <div className="text-slate-700 text-sm leading-relaxed relative z-10 font-medium">
+          <strong className="text-amber-800 font-extrabold mr-1">Dica de Campeão:</strong> 
+          Dobre suas chances de subir no ranking! Dê seus palpites nos <strong className="text-slate-900 font-bold">Jogos Promocionais</strong> (palpites de apenas R$ 1,00) para acumular mais pontos extras e disparar rumo ao topo da Classificação Geral!
+        </div>
+      </div>
+
       {/* Seção de Classificação Geral Premium */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card do Líder */}
@@ -190,10 +202,10 @@ export default function Home() {
             </div>
             <div>
               <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                Prêmio Acumulado Rank 1
+                Prêmio Estimado Rank 1
               </span>
               <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1">
-                R$ {totalPrizePool.toFixed(2)}
+                R$ {(totalPrizePool * 80).toFixed(2)}
               </h3>
               <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
