@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Match } from '../types';
+import { Match, Bet } from '../types';
 import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
@@ -16,6 +16,7 @@ export default function Home() {
   const [leader, setLeader] = useState<{ userName: string; points: number } | null>(null);
   const [totalPrizePool, setTotalPrizePool] = useState<number>(0);
   const [printingPdfId, setPrintingPdfId] = useState<string | null>(null);
+  const [bets, setBets] = useState<Bet[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -30,9 +31,12 @@ export default function Home() {
     const unsubscribeBets = onSnapshot(q, (snapshot) => {
       let calculatedPrizePool = 0;
       const scores: Record<string, { userName: string, points: number }> = {};
+      const allBets: Bet[] = [];
       
       snapshot.docs.forEach(doc => {
-        const bet = doc.data();
+        const betData = doc.data() as Bet;
+        const bet = { ...betData, id: doc.id };
+        allBets.push(bet);
         if (bet.status !== 'confirmed') return;
         
         if (bet.amount === 1) {
@@ -54,6 +58,7 @@ export default function Home() {
       })).sort((a, b) => b.points - a.points);
       
       setTotalPrizePool(calculatedPrizePool);
+      setBets(allBets);
       if (rows.length > 0) {
         setLeader(rows[0]);
       } else {
@@ -265,6 +270,17 @@ export default function Home() {
                   const date = new Date(match.date);
                   const isPromo = match.isPromotional;
 
+                  // Calculate bets stats
+                  const matchBets = bets.filter(b => b.matchId === match.id && b.status === 'confirmed');
+                  const totalBets = matchBets.length;
+                  const eligibleBets = matchBets.filter(b => {
+                    const p1 = parseInt(b.predicted1, 10);
+                    const p2 = parseInt(b.predicted2, 10);
+                    const l1 = match.liveResult1 ?? 0;
+                    const l2 = match.liveResult2 ?? 0;
+                    return !isNaN(p1) && !isNaN(p2) && p1 >= l1 && p2 >= l2;
+                  }).length;
+
                   return (
                     <Link
                       key={match.id}
@@ -324,8 +340,11 @@ export default function Home() {
                       </div>
 
                       <div className="bg-red-55/10 px-5 py-4 border-t border-red-100/50 flex justify-between items-center transition relative z-10">
-                        <div className="text-xs flex flex-col text-slate-400">
+                        <div className="text-xs flex flex-col text-slate-400 space-y-1.5">
                           <span className="font-semibold">{date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="font-bold text-slate-650 bg-white border border-slate-200 shadow-sm px-2 py-1 rounded-md inline-flex items-center w-max">
+                            {totalBets} palpites <span className="mx-1.5 text-slate-300">|</span> <span className="text-emerald-700 font-extrabold">{eligibleBets} aptos a vencer</span>
+                          </span>
                         </div>
                         <div className="text-xs font-bold text-red-650 flex items-center gap-0.5 bg-red-50 border border-red-100 px-2.5 py-1.5 rounded-xl group-hover:bg-red-600 group-hover:text-white transition">
                           Acompanhar <ChevronRight className="h-3.5 w-3.5 shrink-0" />
