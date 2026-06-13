@@ -64,7 +64,7 @@ export default function AdminLogs() {
     if (!filter) return true;
     const match = matches.find(m => m.id === bet.matchId);
     const user = users.find(u => u.id === bet.userId);
-    const searchString = `${user?.name || bet.userName} ${match?.team1} ${match?.team2}`.toLowerCase();
+    const searchString = `${user?.name || bet.userName} ${user?.displayId || ''} ${match?.team1} ${match?.team2}`.toLowerCase();
     return searchString.includes(filter.toLowerCase());
   });
 
@@ -153,7 +153,10 @@ export default function AdminLogs() {
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/55 transition-colors">
                       <td className="py-3 px-5 font-mono text-xs text-slate-500">{formatDateTime(b.createdAt)}</td>
-                      <td className="py-3 px-5 font-bold text-slate-800">{u?.name || b.userName}</td>
+                      <td className="py-3 px-5 font-bold text-slate-800">
+                        {u?.displayId && <span className="text-emerald-700 font-mono mr-1.5 text-xs">#{u.displayId}</span>}
+                        {u?.name || b.userName}
+                      </td>
                       <td className="py-3 px-5 font-medium text-slate-700">{m ? `${m.team1} x ${m.team2}` : 'Jogo Excluído'}</td>
                       <td className="py-3 px-5">
                         {m?.isPromotional 

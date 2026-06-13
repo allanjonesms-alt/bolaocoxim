@@ -142,7 +142,10 @@ export default function UserPanel() {
           <div className="h-24 w-24 bg-emerald-50 border-2 border-emerald-500/25 text-emerald-600 rounded-full flex items-center justify-center text-4xl font-display font-bold mb-5 shadow-sm relative z-10">
             {profile.name.charAt(0).toUpperCase()}
           </div>
-          <h2 className="text-xl font-display font-bold text-slate-800 relative z-10">{profile.name}</h2>
+          <h2 className="text-xl font-display font-bold text-slate-800 relative z-10 flex items-center gap-2">
+            <span className="text-emerald-600">#{profile.displayId || '---'}</span>
+            <span>{profile.name}</span>
+          </h2>
           <p className="text-slate-500 text-sm mb-8 font-medium relative z-10">{profile.email}</p>
           
           <button 

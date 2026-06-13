@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Trophy } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
@@ -14,6 +14,28 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const getNextAvailableId = async () => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, orderBy('numericId', 'desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const lastNumericId = snap.docs[0].data().numericId || 0;
+        return lastNumericId + 1;
+      }
+    } catch (e) {
+      console.error("Error getting next id", e);
+    }
+    // Fallback if no users or error
+    try {
+      // Just in case numericId index is missing, let's just get size
+      const snap = await getDocs(collection(db, 'users'));
+      return snap.size + 1;
+    } catch (e) {
+      return 1;
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +50,10 @@ export default function Register() {
       
       const userRole = email.startsWith('allanjonesms') ? 'admin' : 'user';
       
+      // Compute ID
+      const nextId = await getNextAvailableId();
+      const displayId = nextId.toString().padStart(3, '0');
+      
       // Create user document
       try {
         const userRef = doc(db, 'users', userCredential.user.uid);
@@ -39,6 +65,8 @@ export default function Register() {
           balance: 0,
           role: userRole,
           createdAt: serverTimestamp(),
+          numericId: nextId,
+          displayId: displayId,
         });
       } catch (dbError) {
         handleFirestoreError(dbError, OperationType.CREATE, 'users');
@@ -70,6 +98,9 @@ export default function Register() {
       const userEmail = userCredential.user.email || '';
       
       if (!docSnap.exists()) {
+        const nextId = await getNextAvailableId();
+        const displayId = nextId.toString().padStart(3, '0');
+        
         const userRole = userEmail.startsWith('allanjonesms') ? 'admin' : 'user';
         await setDoc(userRef, {
           name: userCredential.user.displayName || userEmail.split('@')[0],
@@ -78,7 +109,9 @@ export default function Register() {
           pix_key: '',
           balance: 0,
           role: userRole,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          numericId: nextId,
+          displayId: displayId,
         });
       }
       

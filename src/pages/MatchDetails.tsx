@@ -4,8 +4,9 @@ import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimest
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Match, Bet } from '../types';
-import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy, Check, X } from 'lucide-react';
+import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy, Check, X, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
+import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 
 export default function MatchDetails() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function MatchDetails() {
   const [predict2, setPredict2] = useState<string>('');
   const [placingBet, setPlacingBet] = useState(false);
   const [betError, setBetError] = useState('');
+  const [printingPdf, setPrintingPdf] = useState(false);
 
   const [live1, setLive1] = useState<number>(0);
   const [live2, setLive2] = useState<number>(0);
@@ -711,9 +713,27 @@ export default function MatchDetails() {
         {/* Existing Bets */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8">
-            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex items-center justify-between">
-              Placares Apostados
-              <span className="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-mono font-bold">{bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length} Palpites</span>
+            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <span className="flex items-center gap-2.5">
+                Placares Apostados
+                <span className="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-mono font-bold">{bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length} Palpites</span>
+              </span>
+              
+              {match && (match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000)) && (
+                <button
+                  onClick={async () => {
+                    if (printingPdf) return;
+                    setPrintingPdf(true);
+                    await generateMatchBetsPDF(match);
+                    setPrintingPdf(false);
+                  }}
+                  disabled={printingPdf}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm border border-emerald-500/10 cursor-pointer hover:scale-[1.02] active:scale-98"
+                >
+                  <Download className={`h-3 w-3 ${printingPdf ? 'animate-bounce' : ''}`} />
+                  <span>{printingPdf ? 'Gerando...' : 'Baixar PDF de Apostas'}</span>
+                </button>
+              )}
             </h2>
             
             {Object.keys(groupedBets).length === 0 ? (

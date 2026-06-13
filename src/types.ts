@@ -13,6 +13,8 @@ export interface UserProfile {
   balance: number;
   role: Role;
   createdAt: string;
+  displayId?: string;
+  numericId?: number;
 }
 
 export interface Match {

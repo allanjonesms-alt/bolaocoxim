@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
+import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -14,6 +15,7 @@ export default function Home() {
   const [now, setNow] = useState(Date.now());
   const [leader, setLeader] = useState<{ userName: string; points: number } | null>(null);
   const [totalPrizePool, setTotalPrizePool] = useState<number>(0);
+  const [printingPdfId, setPrintingPdfId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -431,6 +433,23 @@ export default function Home() {
               <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center border-b border-slate-200 pb-3">
                 Jogos Oficiais 
               </h2>
+
+              {/* Informação Importante sobre Encerramento e PDF */}
+              <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-600/5 to-white border border-emerald-500/30 rounded-3xl p-5 mb-6 flex flex-col md:flex-row items-start md:items-center gap-4 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="bg-emerald-100 border border-emerald-300 p-3 rounded-2xl shrink-0 flex items-center justify-center">
+                  <AlertCircle className="h-6 w-6 text-emerald-700 animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-emerald-900 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    📢 INFORMAÇÃO IMPORTANTE & TRANSPARÊNCIA
+                  </h4>
+                  <p className="text-slate-650 text-xs sm:text-sm leading-relaxed font-medium">
+                    As apostas se encerram pontualmente às <strong className="text-emerald-800 font-extrabold">17h30</strong>. Logo após o encerramento, estará disponível para download o <strong className="text-slate-800 font-bold">arquivo PDF com todas as apostas registradas</strong>, garantindo total lisura, transparência e segurança de todos os participantes do nosso Bolão!
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {officialMatches.map(match => {
                   const date = new Date(match.date);
@@ -514,9 +533,29 @@ export default function Home() {
                             R$ {(match.poolTotal * 0.9).toFixed(2)}
                           </span>
                         </div>
-                        <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-yellow-400/25 transition-colors border border-slate-200 group-hover:border-yellow-300">
-                          <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-amber-800 transition-colors" />
-                        </div>
+                        
+                        {!isOpen ? (
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (printingPdfId) return;
+                              setPrintingPdfId(match.id);
+                              await generateMatchBetsPDF(match);
+                              setPrintingPdfId(null);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-emerald-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                            title="Baixar PDF com todos os palpites para transparência"
+                            disabled={printingPdfId !== null}
+                          >
+                            <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
+                            <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
+                          </button>
+                        ) : (
+                          <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-yellow-400/25 transition-colors border border-slate-200 group-hover:border-yellow-300">
+                            <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-amber-800 transition-colors" />
+                          </div>
+                        )}
                       </div>
                     </Link>
                   );
@@ -605,13 +644,36 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      <div className="bg-indigo-50/80 px-5 py-4 border-t border-indigo-100 flex justify-end items-center transition relative z-10">
-                        <div className="text-sm flex flex-col items-end">
+                      <div className="bg-indigo-50/80 px-5 py-4 border-t border-indigo-100 flex justify-between items-center transition relative z-10">
+                        <div className="text-sm flex flex-col">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-indigo-700 font-mono text-base">
                             R$ 1.00
                           </span>
                         </div>
+                        
+                        {!isOpen ? (
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (printingPdfId) return;
+                              setPrintingPdfId(match.id);
+                              await generateMatchBetsPDF(match);
+                              setPrintingPdfId(null);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-indigo-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                            title="Baixar PDF com todos os palpites para transparência"
+                            disabled={printingPdfId !== null}
+                          >
+                            <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
+                            <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
+                          </button>
+                        ) : (
+                          <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-indigo-100 transition-colors border border-slate-200">
+                            <ChevronRight className="h-5 w-5 text-indigo-500 transition-colors" />
+                          </div>
+                        )}
                       </div>
                     </Link>
                   );

@@ -143,7 +143,8 @@ export default function AdminUsers() {
   const filteredUsers = users.filter(u => 
     (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
     (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.phone || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (u.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.displayId || '').includes(searchQuery)
   );
 
   return (
@@ -196,6 +197,7 @@ export default function AdminUsers() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold">
+                <th className="py-4 px-5">ID</th>
                 <th className="py-4 px-5">Nome</th>
                 <th className="py-4 px-5">E-mail</th>
                 <th className="py-4 px-5">Celular</th>
@@ -214,6 +216,7 @@ export default function AdminUsers() {
               ) : (
                 filteredUsers.map(u => (
                   <tr key={u.id} className="hover:bg-slate-50/55 transition-colors">
+                    <td className="py-3.5 px-5 font-mono text-slate-400 font-bold">#{u.displayId || '---'}</td>
                     <td className="py-3.5 px-5 font-bold text-slate-800">{u.name}</td>
                     <td className="py-3.5 px-5 text-slate-500 select-all font-medium">{u.email}</td>
                     <td className="py-3.5 px-5 font-mono text-slate-500">{u.phone || '-'}</td>
@@ -250,7 +253,8 @@ export default function AdminUsers() {
               <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <div>
                   <h3 className="text-xl font-display font-bold text-slate-800 flex items-center gap-2">
-                    <span>Dossiê de {liveSelectedUser.name}</span>
+                    <span className="text-emerald-700">#{liveSelectedUser.displayId || '---'}</span>
+                    <span>{liveSelectedUser.name}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase ml-3 ${liveSelectedUser.role === 'admin' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                       {liveSelectedUser.role === 'admin' ? 'Administrador' : 'Usuário Regular'}
                     </span>

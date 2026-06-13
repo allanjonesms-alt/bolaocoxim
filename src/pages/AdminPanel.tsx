@@ -670,7 +670,10 @@ export default function AdminPanel() {
                   return (
                     <div key={t.id} className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl flex justify-between items-center text-sm shadow-sm hover:border-slate-300 transition-colors">
                       <div>
-                        <strong className="text-slate-800 block mb-1 font-bold">{u?.name || 'Carregando usuário...'}</strong>
+                        <strong className="text-slate-800 block mb-1 font-bold">
+                          {u?.displayId && <span className="text-emerald-700 font-mono mr-1.5 text-xs">#{u.displayId}</span>}
+                          {u?.name || 'Carregando usuário...'}
+                        </strong>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isDeposit ? 'bg-emerald-55 text-emerald-800 font-semibold' : 'bg-amber-50 text-amber-800 font-semibold'}`}>
                             {isDeposit ? 'Depósito' : 'Saque'}
@@ -713,7 +716,10 @@ export default function AdminPanel() {
                   return (
                     <div key={b.id} className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl flex justify-between items-center text-sm shadow-sm hover:border-slate-300 transition-colors">
                       <div>
-                        <strong className="text-slate-800 block mb-0.5 font-bold">{u?.name || b.userName}</strong>
+                        <strong className="text-slate-800 block mb-0.5 font-bold">
+                          {u?.displayId && <span className="text-emerald-700 font-mono mr-1.5 text-xs">#{u.displayId}</span>}
+                          {u?.name || b.userName}
+                        </strong>
                         <span className="text-xs text-slate-500 block mb-1">
                           Jogo: <span className="text-slate-700 font-semibold">{m ? `${m.team1} x ${m.team2}` : 'Carregando...'}</span>
                         </span>
@@ -952,7 +958,7 @@ export default function AdminPanel() {
                 <p className="text-slate-650 text-sm leading-relaxed">
                   Deseja realmente <strong className={isApprove ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>
                     {isApprove ? 'APROVAR' : 'RECUSAR E EXCLUIR'}
-                  </strong> o {t.type === 'deposit' ? 'depósito' : 'saque'} de <span className="font-mono text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded">R$ {t.amount.toFixed(2)}</span> solicitado por <strong className="text-slate-800 font-bold">{u?.name || 'Jogador'}</strong>?
+                  </strong> o {t.type === 'deposit' ? 'depósito' : 'saque'} de <span className="font-mono text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded">R$ {t.amount.toFixed(2)}</span> solicitado por <strong className="text-slate-800 font-bold">{u?.displayId ? `#${u.displayId} - ` : ''}{u?.name || 'Jogador'}</strong>?
                 </p>
                 {!isApprove && (
                   <p className="text-xs text-amber-800 font-semibold bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
@@ -1020,7 +1026,7 @@ export default function AdminPanel() {
                 <p className="text-slate-650 text-sm leading-relaxed">
                   Deseja realmente <strong className={isApprove ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>
                     {isApprove ? 'APROVAR' : 'RECUSAR E DELETAR'}
-                  </strong> o palpite de <strong className="text-slate-800 font-bold">{b.predicted1} x {b.predicted2}</strong> para a partida <strong className="text-slate-800 font-bold">{m ? `${m.team1} x ${m.team2}` : 'Carregando...'}</strong> realizado por <strong className="text-slate-800 font-bold">{u?.name || b.userName}</strong>?
+                  </strong> o palpite de <strong className="text-slate-800 font-bold">{b.predicted1} x {b.predicted2}</strong> para a partida <strong className="text-slate-800 font-bold">{m ? `${m.team1} x ${m.team2}` : 'Carregando...'}</strong> realizado por <strong className="text-slate-800 font-bold">{u?.displayId ? `#${u.displayId} - ` : ''}{u?.name || b.userName}</strong>?
                 </p>
                 
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-500 space-y-1">
