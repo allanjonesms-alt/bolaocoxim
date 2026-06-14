@@ -23,8 +23,28 @@ export default function Layout() {
   const [pixRequests, setPixRequests] = useState<PixRequest[]>([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState<Transaction[]>([]);
   const [users, setUsers] = useState<Record<string, UserProfile>>({});
-  const [showPixModal, setShowPixModal] = useState(false);
-  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [globalNotification, setGlobalNotification] = useState<{ id: string, message: string, active: boolean } | null>(null);
+  const [dismissedNotificationId, setDismissedNotificationId] = useState<string | null>(localStorage.getItem('dismissed_notification_id'));
+
+  useEffect(() => {
+    const unsubGlobal = onSnapshot(doc(db, 'settings', 'global_notification'), (d) => {
+      if (d.exists()) {
+        setGlobalNotification(d.data() as any);
+      }
+    });
+
+    return () => {
+      unsubGlobal();
+    };
+  }, []);
+
+  const handleDismissGlobalNotification = () => {
+    if (globalNotification?.id) {
+      localStorage.setItem('dismissed_notification_id', globalNotification.id);
+      setDismissedNotificationId(globalNotification.id);
+    }
+  };
 
   useEffect(() => {
     if (profile?.role === 'admin') {
@@ -104,35 +124,19 @@ export default function Layout() {
                 {profile.role === 'admin' && (
                   <div className="flex items-center space-x-4">
                     <button 
-                      onClick={() => setShowPixModal(true)}
+                      onClick={() => setShowNotificationsModal(true)}
                       className="relative text-emerald-100 hover:text-yellow-400 transition"
-                      title="Solicitações de PIX"
+                      title="Notificações"
                     >
                       <Bell className="h-5 w-5" />
-                      {pixRequests.length > 0 && (
+                      {(pixRequests.length > 0 || pendingWithdrawals.length > 0) && (
                         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${pendingWithdrawals.length > 0 ? 'bg-red-400' : 'bg-green-400'}`}></span>
+                          <span className={`relative inline-flex rounded-full h-3 w-3 ${pendingWithdrawals.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}></span>
                         </span>
                       )}
                     </button>
-
-                    <button 
-                      onClick={() => {
-                        setShowWithdrawalModal(true);
-                      }}
-                      className="relative text-emerald-100 hover:text-rose-400 transition"
-                      title="Solicitações de Saque"
-                    >
-                      <Bell className="h-5 w-5" />
-                      {pendingWithdrawals.length > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                        </span>
-                      )}
-                    </button>
-
+                    
                     <Link to="/admin" className="text-yellow-300 bg-emerald-800/80 border border-yellow-400/30 hover:bg-emerald-800 px-3 py-1.5 rounded-md text-sm transition font-medium">
                       Admin
                     </Link>
@@ -186,107 +190,128 @@ export default function Layout() {
         </div>
       </footer>
 
-      {/* Pix Requests Modal for Admins */}
-      {showPixModal && profile?.role === 'admin' && (
+      {/* Notifications Modal for Admins */}
+      {showNotificationsModal && profile?.role === 'admin' && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-xl border border-slate-200 w-full max-w-lg p-6 relative overflow-hidden">
             <button 
-              onClick={() => setShowPixModal(false)}
+              onClick={() => setShowNotificationsModal(false)}
               className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
               title="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
             <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
-              <Bell className="h-6 w-6 mr-3 text-emerald-600" />
-              Solicitações de PIX Pendentes
+              <Bell className="h-6 w-6 mr-3 text-amber-500" />
+              Notificações Pendentes
             </h3>
             
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-              {pixRequests.length === 0 ? (
-                <p className="text-slate-500 font-medium text-center py-8">Nenhuma solicitação pendente.</p>
+              {pixRequests.length === 0 && pendingWithdrawals.length === 0 ? (
+                <p className="text-slate-500 font-medium text-center py-8">Nenhuma notificação pendente.</p>
               ) : (
-                pixRequests.map(req => (
-                  <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-slate-800">{req.userName}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-mono text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                          R$ {req.amount.toFixed(2)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium lowercase">
-                          {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleString() : ''}
-                        </span>
+                <>
+                  {pixRequests.map(req => (
+                    <div key={req.id} className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Depósito PIX</span>
+                        </div>
+                        <p className="font-bold text-slate-800">{req.userName}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-mono text-emerald-700 font-bold bg-white px-2.5 py-0.5 rounded-full border border-emerald-100 shadow-sm">
+                            R$ {req.amount.toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium lowercase">
+                            {req.timestamp?.toDate ? req.timestamp.toDate().toLocaleString() : ''}
+                          </span>
+                        </div>
                       </div>
+                      <button 
+                        onClick={() => handleVerifyPixRequest(req.id)}
+                        className="bg-emerald-200/50 hover:bg-emerald-300/50 text-emerald-700 p-2.5 rounded-xl transition-colors shrink-0 shadow-sm"
+                        title="Verificar"
+                      >
+                        <CheckCircle2 className="h-5 w-5" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => handleVerifyPixRequest(req.id)}
-                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-2.5 rounded-xl transition-colors shrink-0"
-                      title="Verificar"
-                    >
-                      <CheckCircle2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))
+                  ))}
+                  
+                  {pendingWithdrawals.map(req => {
+                    const u = users[req.userId];
+                    return (
+                      <div key={req.id} className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex justify-between items-center">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Solicitação de Saque</span>
+                          </div>
+                          <p className="font-bold text-slate-800">{u?.name || 'Carregando...'}</p>
+                          {u?.pix_key && (
+                            <p className="text-xs font-mono text-slate-500 mt-0.5"><strong className="text-slate-600 font-sans text-[10px] uppercase tracking-wider">Chave PIX:</strong> {u.pix_key}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-mono text-red-700 font-bold bg-white px-2.5 py-0.5 rounded-full border border-red-100 shadow-sm">
+                              R$ {req.amount.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium lowercase">
+                              {new Date(req.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setShowNotificationsModal(false);
+                            navigate('/admin');
+                          }}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 text-xs font-bold rounded-xl transition-colors shrink-0 shadow-sm"
+                          title="Ir para o Admin"
+                        >
+                          Avaliar no Admin
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Withdrawal Requests Modal for Admins */}
-      {showWithdrawalModal && profile?.role === 'admin' && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 w-full max-w-lg p-6 relative overflow-hidden">
+      {/* Global Notification Popup for all users */}
+      {globalNotification?.active && globalNotification.id !== dismissedNotificationId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl border border-amber-200 w-full max-w-md p-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-amber-500"></div>
+            
             <button 
-              onClick={() => setShowWithdrawalModal(false)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
-              title="Fechar"
+              onClick={handleDismissGlobalNotification}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition"
+              title="Fechar Aviso"
             >
               <X className="h-5 w-5" />
             </button>
-            <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
-              <Bell className="h-6 w-6 mr-3 text-red-500" />
-              Solicitações de Saque
-            </h3>
             
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-              {pendingWithdrawals.length === 0 ? (
-                <p className="text-slate-500 font-medium text-center py-8">Nenhuma solicitação de saque pendente.</p>
-              ) : (
-                pendingWithdrawals.map(req => {
-                  const u = users[req.userId];
-                  return (
-                    <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-slate-800">{u?.name || 'Carregando...'}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-mono text-red-700 font-bold bg-red-50 px-2.5 py-0.5 rounded-full border border-red-100">
-                            R$ {req.amount.toFixed(2)}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium lowercase">
-                            {new Date(req.timestamp).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setShowWithdrawalModal(false);
-                          navigate('/admin');
-                        }}
-                        className="bg-amber-100 hover:bg-amber-200 text-amber-700 p-2 text-xs font-bold rounded-xl transition-colors shrink-0"
-                        title="Ir para o Admin"
-                      >
-                        Avaliar no Admin
-                      </button>
-                    </div>
-                  );
-                })
-              )}
+            <div className="flex flex-col items-center text-center mt-2">
+              <div className="bg-amber-100 p-3 rounded-full mb-4">
+                <Bell className="h-6 w-6 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-slate-800 mb-2">Aviso Importante</h3>
+              <p className="text-slate-600 font-medium whitespace-pre-wrap">
+                {globalNotification.message}
+              </p>
+              
+              <button 
+                onClick={handleDismissGlobalNotification}
+                className="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition-colors shadow-sm"
+              >
+                Ciente
+              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

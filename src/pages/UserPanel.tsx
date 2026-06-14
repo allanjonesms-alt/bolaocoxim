@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Bet, Transaction, Match } from '../types';
@@ -18,6 +18,16 @@ export default function UserPanel() {
   const [requestWithdraw, setRequestWithdraw] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [copiedPix, setCopiedPix] = useState(false);
+  
+  const [pixKeyInput, setPixKeyInput] = useState('');
+  const [isUpdatingPixKey, setIsUpdatingPixKey] = useState(false);
+
+  useEffect(() => {
+    if (profile?.pix_key) {
+      setPixKeyInput(profile.pix_key);
+    }
+  }, [profile]);
+
   
   const pixCode = '00020126360014BR.GOV.BCB.PIX0114+55679843730395204000053039865802BR5901N6001C62140510BOLAOCOXIM63049152';
 
@@ -128,6 +138,22 @@ export default function UserPanel() {
     }
   };
 
+  const handleUpdatePixKey = async () => {
+    if (!user) return;
+    setIsUpdatingPixKey(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        pix_key: pixKeyInput
+      });
+      alert('Chave PIX atualizada com sucesso!');
+    } catch(err) {
+      console.error(err);
+      alert('Erro ao atualizar a chave PIX.');
+    } finally {
+      setIsUpdatingPixKey(false);
+    }
+  };
+
   if (!profile) return null;
 
   return (
@@ -146,7 +172,27 @@ export default function UserPanel() {
             <span className="text-emerald-600">#{profile.displayId || '---'}</span>
             <span>{profile.name}</span>
           </h2>
-          <p className="text-slate-500 text-sm mb-8 font-medium relative z-10">{profile.email}</p>
+          <p className="text-slate-500 text-sm mb-4 font-medium relative z-10">{profile.email}</p>
+          
+          <div className="w-full relative z-10 mb-8 border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col text-left">
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Sua Chave PIX (Para Saques)</span>
+             <div className="flex gap-2">
+               <input 
+                 type="text" 
+                 value={pixKeyInput}
+                 onChange={e => setPixKeyInput(e.target.value)}
+                 placeholder="Insira sua chave PIX..."
+                 className="w-full text-xs font-mono text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+               />
+               <button 
+                 onClick={handleUpdatePixKey}
+                 disabled={isUpdatingPixKey || pixKeyInput === (profile.pix_key || '')}
+                 className="px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+               >
+                 Salvar
+               </button>
+             </div>
+          </div>
           
           <button 
             id="balance-button-userpanel"
@@ -371,6 +417,7 @@ export default function UserPanel() {
                       <span>
                         {t.type === 'deposit' ? 'Depósito' : 
                          t.type === 'withdrawal' ? 'Saque' : 
+                         t.type === 'manual_deduction' ? 'Remoção de Saldo' :
                          t.type === 'prize' ? 'Prêmio Recebido' : 'Aposta'}
                       </span>
                       {t.status === 'pending' && t.type === 'deposit' && (
@@ -390,6 +437,11 @@ export default function UserPanel() {
                       )}
                     </div>
                     <div className="text-xs text-slate-450 mt-1 font-semibold">{new Date(t.timestamp).toLocaleDateString()}</div>
+                    {t.type === 'withdrawal' && t.status === 'confirmed' && t.pixReceiptDate && (
+                      <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 mt-1.5 px-2 py-0.5 rounded-md inline-block font-bold">
+                        PIX realizado em: {new Date(t.pixReceiptDate).toLocaleString()}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className={`text-lg font-mono font-bold px-3 py-1 rounded-lg border ${

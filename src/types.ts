@@ -1,7 +1,7 @@
 export type Role = 'user' | 'admin';
 export type MatchStatus = 'open' | 'betting_closed' | 'finished';
 export type BetStatus = 'confirmed' | 'pending';
-export type TransactionType = 'deposit' | 'withdrawal' | 'bet' | 'prize';
+export type TransactionType = 'deposit' | 'withdrawal' | 'manual_deduction' | 'bet' | 'prize';
 export type TransactionStatus = 'pending' | 'confirmed' | 'rejected';
 
 export interface UserProfile {
@@ -54,4 +54,5 @@ export interface Transaction {
   amount: number;
   status: TransactionStatus;
   timestamp: string;
+  pixReceiptDate?: string; // For withdrawals (Saques)
 }

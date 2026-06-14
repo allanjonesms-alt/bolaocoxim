@@ -16,10 +16,12 @@ export default function AdminUsers() {
   const [selectedUserBets, setSelectedUserBets] = useState<Bet[]>([]);
   const [loadingBets, setLoadingBets] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
-  const [adjustmentType, setAdjustmentType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [adjustmentType, setAdjustmentType] = useState<'deposit' | 'withdrawal' | 'manual_deduction'>('deposit');
+  const [pixReceiptDate, setPixReceiptDate] = useState('');
   const [adjustingBalance, setAdjustingBalance] = useState(false);
   const [editUserName, setEditUserName] = useState('');
   const [editUserPhone, setEditUserPhone] = useState('');
+  const [editUserPixKey, setEditUserPixKey] = useState('');
   const [savingUserData, setSavingUserData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -58,6 +60,7 @@ export default function AdminUsers() {
     setSelectedUser(u);
     setEditUserName(u.name || '');
     setEditUserPhone(u.phone || '');
+    setEditUserPixKey(u.pix_key || '');
     setLoadingBets(true);
     try {
       const betsQuery = query(collection(db, 'bets'), where('userId', '==', u.id));
@@ -95,7 +98,7 @@ export default function AdminUsers() {
         let newBalance = currentBalance;
 
         if (adjustmentType === 'deposit') newBalance += amount;
-        else {
+        else if (adjustmentType === 'withdrawal' || adjustmentType === 'manual_deduction') {
           if (currentBalance < amount) throw new Error(`Saldo insuficiente. O usuário possui apenas R$ ${currentBalance.toFixed(2)}.`);
           newBalance -= amount;
         }
@@ -103,17 +106,27 @@ export default function AdminUsers() {
         transaction.update(userRef, { balance: newBalance });
 
         const transRef = doc(collection(db, 'transactions'));
-        transaction.set(transRef, {
+        const transData: any = {
           userId: userId,
           type: adjustmentType,
           amount: amount,
           status: 'confirmed',
           timestamp: serverTimestamp()
-        });
+        };
+        
+        if (adjustmentType === 'withdrawal') {
+          if (!pixReceiptDate) {
+              throw new Error("Para registrar um saque, informe a data e hora do PIX.");
+          }
+          transData.pixReceiptDate = pixReceiptDate;
+        }
+
+        transaction.set(transRef, transData);
       });
 
       showNotification('Saldo ajustado com sucesso!');
       setCustomAmount('');
+      setPixReceiptDate('');
     } catch (err: any) {
       showNotification(err.message || 'Erro ao ajustar o saldo.', 'error');
     } finally {
@@ -127,7 +140,8 @@ export default function AdminUsers() {
     try {
       await updateDoc(doc(db, 'users', selectedUser.id), {
         name: editUserName,
-        phone: editUserPhone
+        phone: editUserPhone,
+        pix_key: editUserPixKey
       });
       showNotification('Dados do usuário atualizados com sucesso!');
     } catch (err) {
@@ -321,6 +335,16 @@ export default function AdminUsers() {
                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 font-mono text-sm font-medium" 
                         />
                       </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Chave PIX (Para Saque)</label>
+                        <input 
+                          type="text" 
+                          value={editUserPixKey} 
+                          onChange={e => setEditUserPixKey(e.target.value)} 
+                          placeholder="Email, CPF, Celular ou Aleatória"
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 font-mono text-sm font-medium" 
+                        />
+                      </div>
                       <button 
                         onClick={handleSaveUserData}
                         disabled={savingUserData}
@@ -342,33 +366,46 @@ export default function AdminUsers() {
                       <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-[40px] pointer-events-none"></div>
                       
                       <div className="space-y-4 relative z-10">
-                        <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="grid grid-cols-3 gap-2 mb-4">
                           <button 
                             type="button"
                             onClick={() => setAdjustmentType('deposit')}
-                            className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                               adjustmentType === 'deposit' 
                                 ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600 ring-offset-2 ring-offset-slate-50' 
                                 : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            Adicionar Saldo
+                            Add Saldo
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setAdjustmentType('manual_deduction')}
+                            className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                              adjustmentType === 'manual_deduction' 
+                                ? 'bg-orange-600 text-white shadow-sm ring-2 ring-orange-600 ring-offset-2 ring-offset-slate-50' 
+                                : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            Remover
                           </button>
                           <button 
                             type="button"
                             onClick={() => setAdjustmentType('withdrawal')}
-                            className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            className={`py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                               adjustmentType === 'withdrawal' 
-                                ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-600 ring-offset-2 ring-offset-slate-50' 
+                                ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-600 ring-offset-2 ring-offset-slate-50' 
                                 : 'bg-white border border-slate-200 text-slate-500 hover:text-slate-800'
                             }`}
                           >
-                            Remover Saldo
+                            Saque
                           </button>
                         </div>
 
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Valor do Ajuste (R$)</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                            Valor do Ajuste (R$)
+                          </label>
                           <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                             <input 
@@ -383,16 +420,42 @@ export default function AdminUsers() {
                           </div>
                         </div>
 
+                        {adjustmentType === 'withdrawal' && (
+                          <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl space-y-3 mt-2">
+                            <div>
+                              <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                                Chave PIX do Usuário
+                              </label>
+                              <div className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg text-rose-900 font-mono text-xs font-bold break-all">
+                                {liveSelectedUser.pix_key || 'Não cadastrada pelo usuário'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-rose-700 uppercase tracking-wider block mb-1">
+                                Data/Hora do PIX Realizado
+                              </label>
+                              <input 
+                                type="datetime-local" 
+                                value={pixReceiptDate}
+                                onChange={(e) => setPixReceiptDate(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-rose-200 rounded-lg focus:ring-2 focus:ring-rose-500/35 outline-none text-slate-800 font-mono text-sm"
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <button 
                           onClick={() => handleAdjustBalance(liveSelectedUser.id)} 
-                          disabled={adjustingBalance || !customAmount} 
+                          disabled={adjustingBalance || !customAmount || (adjustmentType === 'withdrawal' && !pixReceiptDate)} 
                           className={`w-full px-6 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 shadow-sm mt-2 ${
                             adjustmentType === 'deposit' 
                               ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer' 
-                              : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
+                              : adjustmentType === 'withdrawal'
+                                ? 'bg-rose-600 hover:bg-rose-700 text-white cursor-pointer'
+                                : 'bg-orange-600 hover:bg-orange-700 text-white cursor-pointer'
                           }`}
                         >
-                          {adjustingBalance ? 'Processando...' : `Confirmar ${adjustmentType === 'deposit' ? 'Adição' : 'Remoção'} de Saldo`}
+                          {adjustingBalance ? 'Processando...' : `Confirmar ${adjustmentType === 'deposit' ? 'Adição' : adjustmentType === 'withdrawal' ? 'Saque' : 'Remoção'} de Saldo`}
                         </button>
                       </div>
                     </div>

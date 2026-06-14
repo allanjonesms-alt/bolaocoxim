@@ -57,6 +57,42 @@ export default function AdminPanel() {
   const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'reject'; transaction: Transaction } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Global Notification
+  const [notificationMsg, setNotificationMsg] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+
+  const handleSendNotification = async () => {
+    if (!notificationMsg.trim()) return;
+    setSendingNotification(true);
+    try {
+      const ts = Date.now();
+      await setDoc(doc(db, 'settings', 'global_notification'), {
+        message: notificationMsg,
+        id: ts.toString(),
+        timestamp: serverTimestamp(),
+        active: true
+      });
+      setNotificationMsg('');
+      showNotification("Notificação enviada com sucesso!", "success");
+    } catch (error) {
+      showNotification("Erro ao enviar notificação.", "error");
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
+  const handleClearNotification = async () => {
+    try {
+      await updateDoc(doc(db, 'settings', 'global_notification'), {
+        active: false
+      });
+      showNotification("Notificação limpa com sucesso!", "success");
+    } catch (error) {
+      // Ignorar se não existir
+      showNotification("Erro ao limpar notificação.", "error");
+    }
+  };
+
   // Winners Section settings
   const [winnersSettings, setWinnersSettings] = useState<{ active: boolean; matchId: string; updatedAt: any } | null>(null);
   const [winnersMatchId, setWinnersMatchId] = useState<string>('');
@@ -568,7 +604,9 @@ export default function AdminPanel() {
   const totalSiteBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
 
   const totalApostado = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
-    return sum + (b.amount || 5);
+    const m = matches.find(m => m.id === b.matchId);
+    if (!m || m.status === 'finished') return sum;
+    return sum + (b.amount || (m.isPromotional ? 1 : 5));
   }, 0);
 
   const totalCaixa = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
@@ -792,11 +830,44 @@ export default function AdminPanel() {
         </div>
       </div>
 
+      {/* Aviso Rápido / Notificação Global */}
+      <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
+        <h2 className="font-display font-bold mb-4 text-slate-800 text-lg uppercase tracking-wider flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-amber-500" />
+          Aviso Geral (Pop-up)
+        </h2>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <input
+            type="text"
+            placeholder="Digite a mensagem para exibir em pop-up para todos..."
+            value={notificationMsg}
+            onChange={e => setNotificationMsg(e.target.value)}
+            className="flex-1 w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all font-medium text-slate-800"
+          />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleSendNotification}
+              disabled={sendingNotification || !notificationMsg.trim()}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-bold shadow-sm transition-colors disabled:opacity-50"
+            >
+              {sendingNotification ? 'Enviando...' : 'Enviar Aviso'}
+            </button>
+            <button
+              onClick={handleClearNotification}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-xl font-bold shadow-sm transition-colors"
+              title="Desativar aviso atual"
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Botões de Acesso Rápido a Novas Telas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link 
           to="/admin/users" 
-          className="bg-white p-8 rounded-3xl shadow-md border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-4 cursor-pointer"
+          className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-emerald-500/10 transition-colors"></div>
           <div className="bg-emerald-50 p-4 rounded-full text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-100 transition-all flex items-center justify-center relative">
@@ -804,22 +875,35 @@ export default function AdminPanel() {
             <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{users.length}</span>
           </div>
           <div className="text-center">
-            <h3 className="font-display font-bold text-slate-800 text-lg uppercase tracking-wider mb-1">Gerenciar Usuários</h3>
-            <p className="text-sm text-slate-500 font-medium">Ver lista completa, editar cadastros e gerenciar saldos.</p>
-            <p className="text-3xl font-mono font-bold text-emerald-600 mt-4">{users.length}</p>
+            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Gerenciar Usuários</h3>
+            <p className="text-xs text-slate-500 font-medium">Ver lista completa, editar cadastros e gerenciar saldos.</p>
           </div>
         </Link>
         <Link 
           to="/admin/logs" 
-          className="bg-white p-8 rounded-3xl shadow-md border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-4 cursor-pointer"
+          className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
           <div className="bg-indigo-50 p-4 rounded-full text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-100 transition-all">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
           </div>
           <div className="text-center">
-            <h3 className="font-display font-bold text-slate-800 text-lg uppercase tracking-wider mb-1">Logs de Apostas</h3>
-            <p className="text-sm text-slate-500 font-medium">Histórico detalhado de todos os palpites realizados no sistema.</p>
+            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Logs de Apostas</h3>
+            <p className="text-xs text-slate-500 font-medium">Histórico detalhado das apostas no sistema.</p>
+          </div>
+        </Link>
+        <Link 
+          to="/admin/transactions" 
+          className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-blue-500/10 transition-colors"></div>
+          <div className="bg-blue-50 p-4 rounded-full text-blue-600 group-hover:scale-110 group-hover:bg-blue-100 transition-all flex items-center justify-center relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">{transactions.length}</span>
+          </div>
+          <div className="text-center">
+            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Transações</h3>
+            <p className="text-xs text-slate-500 font-medium">Histórico de entrada e saída de saldos do site.</p>
           </div>
         </Link>
       </div>
@@ -828,7 +912,7 @@ export default function AdminPanel() {
       <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
         <h2 className="font-display font-bold mb-6 text-slate-800 text-lg uppercase tracking-wider">Gerenciar Partidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {matches.map(m => (
+          {[...matches].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(m => (
             <div key={m.id} className="bg-slate-50/70 border border-slate-200 p-6 rounded-2xl flex flex-col justify-between shadow-sm relative hover:border-slate-300 transition-colors">
               {editingMatchId === m.id ? (
                 <div className="space-y-4 w-full">
@@ -1045,6 +1129,12 @@ export default function AdminPanel() {
                     {isApprove ? 'APROVAR' : 'RECUSAR E EXCLUIR'}
                   </strong> o {t.type === 'deposit' ? 'depósito' : 'saque'} de <span className="font-mono text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded">R$ {t.amount.toFixed(2)}</span> solicitado por <strong className="text-slate-800 font-bold">{u?.displayId ? `#${u.displayId} - ` : ''}{u?.name || 'Jogador'}</strong>?
                 </p>
+                {t.type === 'withdrawal' && (
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chave PIX do Usuário</span>
+                    <span className="font-mono text-sm text-slate-800 font-bold break-all select-all">{u?.pix_key || 'Não informada'}</span>
+                  </div>
+                )}
                 {!isApprove && (
                   <p className="text-xs text-amber-800 font-semibold bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
                     Aviso: Recusar esta transação irá deletá-la definitivamente de todos os históricos!

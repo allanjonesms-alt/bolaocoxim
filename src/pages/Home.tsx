@@ -522,7 +522,7 @@ export default function Home() {
                 Jogos Oficiais 
               </h2>
 
-              {/* Informação Importante sobre Encerramento e PDF */}
+              {/* Informação Importante sobre Encerramento e PDF - OCULTADO
               <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-600/5 to-white border border-emerald-500/30 rounded-3xl p-5 mb-6 flex flex-col md:flex-row items-start md:items-center gap-4 shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
                 <div className="bg-emerald-100 border border-emerald-300 p-3 rounded-2xl shrink-0 flex items-center justify-center">
@@ -537,6 +537,7 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+              */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {officialMatches.map(match => {
