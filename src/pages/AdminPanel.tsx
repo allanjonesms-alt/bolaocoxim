@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, runTransaction, getDocs, where, deleteDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, runTransaction, getDocs, where, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match, Transaction, UserProfile, Bet } from '../types';
 import { Link } from 'react-router-dom';
@@ -56,6 +56,12 @@ export default function AdminPanel() {
   // Custom alert/toast states
   const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'reject'; transaction: Transaction } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Winners Section settings
+  const [winnersSettings, setWinnersSettings] = useState<{ active: boolean; matchId: string; updatedAt: any } | null>(null);
+  const [winnersMatchId, setWinnersMatchId] = useState<string>('');
+  const [winnersActive, setWinnersActive] = useState<boolean>(false);
+  const [savingWinnersSection, setSavingWinnersSection] = useState(false);
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -187,7 +193,20 @@ export default function AdminPanel() {
     const unsubBets = onSnapshot(collection(db, 'bets'), (snapshot) => {
       setBets(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Bet)));
     });
-    return () => { unsubMatches(); unsubTrans(); unsubUsers(); unsubBets(); };
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'winnersSection'), (d) => {
+      if (d.exists()) {
+        const data = d.data();
+        setWinnersSettings(data as any);
+        setWinnersMatchId(data.matchId || '');
+        setWinnersActive(data.active || false);
+      } else {
+        setWinnersSettings(null);
+        setWinnersMatchId('');
+        setWinnersActive(false);
+      }
+    });
+
+    return () => { unsubMatches(); unsubTrans(); unsubUsers(); unsubBets(); unsubSettings(); };
   }, []);
 
   const handleAddMatch = async (e: FormEvent) => {
@@ -225,6 +244,23 @@ export default function AdminPanel() {
       setUploadingMatch(false);
     }
   }
+
+  const handleSaveWinnersSettings = async () => {
+    setSavingWinnersSection(true);
+    try {
+      await setDoc(doc(db, 'settings', 'winnersSection'), {
+        active: winnersActive,
+        matchId: winnersMatchId,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      showNotification('Configuração de Vencedores salva com sucesso!');
+    } catch(err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'settings');
+      showNotification('Erro ao salvar configurações.', 'error');
+    } finally {
+      setSavingWinnersSection(false);
+    }
+  };
 
   const startEditMatch = (m: Match) => {
     setEditingMatchId(m.id);
@@ -907,6 +943,55 @@ export default function AdminPanel() {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Winners Section Config */}
+      <div className="bg-white border border-slate-200 p-6 md:p-8 rounded-3xl shadow-sm mb-12">
+        <h2 className="font-display font-bold mb-6 text-slate-800 text-lg uppercase tracking-wider">Configurar Seção de Vencedores na Home</h2>
+        <div className="flex flex-col space-y-5 max-w-xl">
+          <div>
+            <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Exibir Seção na Página Inicial</label>
+            <div className="flex items-center gap-3">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer" 
+                  checked={winnersActive}
+                  onChange={(e) => setWinnersActive(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+              <span className="text-sm font-bold text-slate-700">{winnersActive ? 'Ativada' : 'Desativada'}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Partida Oficial a Divulgar</label>
+            <select 
+              value={winnersMatchId} 
+              onChange={(e) => setWinnersMatchId(e.target.value)} 
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-bold outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/25 transition-all"
+            >
+              <option value="">Selecione uma partida oficial...</option>
+              {matches.filter(m => !m.isPromotional && m.status === 'finished').map(m => (
+                <option key={m.id} value={m.id}>{m.team1} x {m.team2} - {new Date(m.date).toLocaleDateString('pt-BR')} ({m.status})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="pt-4 flex justify-between items-center border-t border-slate-100">
+             <div className="text-xs text-slate-400 font-mono">
+               Última att: {formatDateTime(winnersSettings?.updatedAt)}
+             </div>
+             <button 
+                onClick={handleSaveWinnersSettings} 
+                disabled={savingWinnersSection}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+             >
+                {savingWinnersSection ? 'Salvando...' : 'Salvar Alterações'}
+             </button>
+          </div>
         </div>
       </div>
 

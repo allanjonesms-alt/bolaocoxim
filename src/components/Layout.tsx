@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { Transaction, UserProfile } from '../types';
 
 interface PixRequest {
   id: string;
@@ -20,18 +21,43 @@ export default function Layout() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [pixRequests, setPixRequests] = useState<PixRequest[]>([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<Transaction[]>([]);
+  const [users, setUsers] = useState<Record<string, UserProfile>>({});
   const [showPixModal, setShowPixModal] = useState(false);
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
-      const q = query(
+      const qPix = query(
         collection(db, 'pix_requests'),
         where('verified', '==', false)
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      const unsubscribePix = onSnapshot(qPix, (snapshot) => {
         setPixRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PixRequest)));
       });
-      return () => unsubscribe();
+
+      const qWithdrawal = query(
+        collection(db, 'transactions'),
+        where('type', '==', 'withdrawal'),
+        where('status', '==', 'pending')
+      );
+      const unsubscribeWithdrawal = onSnapshot(qWithdrawal, (snapshot) => {
+        setPendingWithdrawals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+      });
+
+      const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+        const usersMap: Record<string, UserProfile> = {};
+        snapshot.docs.forEach(doc => {
+          usersMap[doc.id] = { id: doc.id, ...doc.data() } as UserProfile;
+        });
+        setUsers(usersMap);
+      });
+
+      return () => {
+        unsubscribePix();
+        unsubscribeWithdrawal();
+        unsubscribeUsers();
+      };
     }
   }, [profile?.role]);
 
@@ -90,6 +116,23 @@ export default function Layout() {
                         </span>
                       )}
                     </button>
+
+                    <button 
+                      onClick={() => {
+                        setShowWithdrawalModal(true);
+                      }}
+                      className="relative text-emerald-100 hover:text-rose-400 transition"
+                      title="Solicitações de Saque"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {pendingWithdrawals.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                      )}
+                    </button>
+
                     <Link to="/admin" className="text-yellow-300 bg-emerald-800/80 border border-yellow-400/30 hover:bg-emerald-800 px-3 py-1.5 rounded-md text-sm transition font-medium">
                       Admin
                     </Link>
@@ -185,6 +228,60 @@ export default function Layout() {
                     </button>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal Requests Modal for Admins */}
+      {showWithdrawalModal && profile?.role === 'admin' && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 w-full max-w-lg p-6 relative overflow-hidden">
+            <button 
+              onClick={() => setShowWithdrawalModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition"
+              title="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
+              <Bell className="h-6 w-6 mr-3 text-red-500" />
+              Solicitações de Saque
+            </h3>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              {pendingWithdrawals.length === 0 ? (
+                <p className="text-slate-500 font-medium text-center py-8">Nenhuma solicitação de saque pendente.</p>
+              ) : (
+                pendingWithdrawals.map(req => {
+                  const u = users[req.userId];
+                  return (
+                    <div key={req.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-slate-800">{u?.name || 'Carregando...'}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-mono text-red-700 font-bold bg-red-50 px-2.5 py-0.5 rounded-full border border-red-100">
+                            R$ {req.amount.toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium lowercase">
+                            {new Date(req.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setShowWithdrawalModal(false);
+                          navigate('/admin');
+                        }}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-700 p-2 text-xs font-bold rounded-xl transition-colors shrink-0"
+                        title="Ir para o Admin"
+                      >
+                        Avaliar no Admin
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
