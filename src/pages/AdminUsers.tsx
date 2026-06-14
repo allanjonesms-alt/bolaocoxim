@@ -491,21 +491,14 @@ export default function AdminUsers() {
                           if (pts === 15 || pts === 5) {
                             pointsLabel = `Exato (+${pts})`;
                             pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                          } else if (pts === 9 || pts === 3) {
-                            if (pts === 9) {
-                              pointsLabel = 'Placar parcial (+9)';
-                              pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
-                            } else if (pts === 3) {
-                              if (match.isPromotional) {
-                                pointsLabel = 'Placar parcial (+3)';
-                                pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
-                              } else {
-                                pointsLabel = 'Vencedor (+3)';
-                                pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
-                              }
-                            }
-                          } else if (pts === 1) {
-                            pointsLabel = 'Vencedor (+1)';
+                          } else if (pts === 9 || (pts === 3 && match.isPromotional)) {
+                            pointsLabel = `Vencedor + 1 Placar (+${pts})`;
+                            pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
+                          } else if (pts === 6 || pts === 2) {
+                            pointsLabel = `1 Placar (+${pts})`;
+                            pointsClass = 'text-indigo-700 bg-indigo-50 border-indigo-200';
+                          } else if ((pts === 3 && !match.isPromotional) || pts === 1) {
+                            pointsLabel = `Vencedor (+${pts})`;
                             pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
                           } else {
                             pointsLabel = 'Errou (0)';

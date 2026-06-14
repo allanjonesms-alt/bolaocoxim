@@ -542,13 +542,18 @@ export default function AdminPanel() {
           const matchRealOutcome = res1 > res2 ? 1 : (res1 < res2 ? 2 : 0);
           const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
 
+          if (matchRealOutcome === betOutcome) {
+            points += isPromotional ? 1 : 3;
+          }
+          if (p1 === res1) {
+            points += isPromotional ? 2 : 6;
+          }
+          if (p2 === res2) {
+            points += isPromotional ? 2 : 6;
+          }
+
           if (p1 === res1 && p2 === res2) {
-            points = isPromotional ? 5 : 15;
             isWinner = true;
-          } else if (p1 === res1 || p2 === res2) {
-            points = isPromotional ? 3 : 9;
-          } else if (matchRealOutcome === betOutcome) {
-            points = isPromotional ? 1 : 3;
           }
 
           if (isWinner) {

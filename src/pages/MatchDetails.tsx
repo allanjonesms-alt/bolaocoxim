@@ -96,13 +96,18 @@ export default function MatchDetails() {
           const matchRealOutcome = live1 > live2 ? 1 : (live1 < live2 ? 2 : 0);
           const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
 
+          if (matchRealOutcome === betOutcome) {
+            points += isPromotional ? 1 : 3;
+          }
+          if (p1 === live1) {
+            points += isPromotional ? 2 : 6;
+          }
+          if (p2 === live2) {
+            points += isPromotional ? 2 : 6;
+          }
+
           if (p1 === live1 && p2 === live2) {
-            points = isPromotional ? 5 : 15;
             isWinner = true;
-          } else if (p1 === live1 || p2 === live2) {
-            points = isPromotional ? 3 : 9;
-          } else if (matchRealOutcome === betOutcome) {
-            points = isPromotional ? 1 : 3;
           }
 
           if (isWinner) {
