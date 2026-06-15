@@ -181,16 +181,26 @@ export default function AdminUsers() {
         </div>
       )}
 
-      <div className="flex items-center gap-4">
-        <Link to="/admin" className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <h1 className="text-3xl font-display font-bold text-slate-800">
-          Usuários Cadastrados
-        </h1>
-        <span className="bg-emerald-50 text-emerald-700 border border-emerald-250 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold ml-2">
-          {users.length}
-        </span>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <Link to="/admin" className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-3xl font-display font-bold text-slate-800">
+            Usuários Cadastrados
+          </h1>
+          <span className="bg-emerald-50 text-emerald-700 border border-emerald-250 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold ml-2">
+            {users.length}
+          </span>
+        </div>
+        <div className="flex flex-col items-end">
+           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+             Saldo Total dos Usuários
+           </span>
+           <span className="text-2xl font-mono font-black text-amber-500 mt-1">
+             R$ {users.reduce((sum, u) => sum + (u.balance || 0), 0).toFixed(2)}
+           </span>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">

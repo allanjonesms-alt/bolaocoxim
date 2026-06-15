@@ -192,6 +192,50 @@ export default function Regulations() {
             <span className="text-xs font-bold text-indigo-700">R$ 1,00 por Palpite</span>
           </div>
         </motion.div>
+
+        {/* Rule 6: Sistema de Pontuação */}
+        <motion.div 
+          variants={itemVariants}
+          className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 hover:border-fuchsia-500/50 transition-all duration-300 relative group flex flex-col justify-between md:col-span-2"
+        >
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-fuchsia-50 border border-fuchsia-100 flex items-center justify-center text-fuchsia-600 group-hover:bg-fuchsia-600 group-hover:text-white transition-all duration-300 shadow-xs">
+              <Trophy className="h-6 w-6" />
+            </div>
+            <h2 className="text-lg font-display font-bold text-slate-800 uppercase tracking-wider">Sistema de Pontuação</h2>
+            <div className="text-slate-600 text-sm leading-relaxed space-y-3">
+              <p>
+                A pontuação para a classificação geral recompensa acertos parciais. Você soma pontos ao acertar o vencedor (ou se foi empate) e ao acertar a quantidade exata de gols de cada equipe.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div className="border border-emerald-100 bg-emerald-50/50 rounded-2xl p-4">
+                  <h3 className="font-bold text-emerald-800 mb-3">Jogos Principais (R$ 5,00)</h3>
+                  <ul className="space-y-2">
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+3 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+6 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+6 pts</span></li>
+                  </ul>
+                  <div className="mt-4 text-xs text-center font-bold text-emerald-900 bg-emerald-200 py-2 rounded-xl">Acerto do Placar Exato: 15 pontos no total</div>
+                </div>
+
+                <div className="border border-indigo-100 bg-indigo-50/50 rounded-2xl p-4">
+                  <h3 className="font-bold text-indigo-800 mb-3">Jogos Promocionais (R$ 1,00)</h3>
+                  <ul className="space-y-2">
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+1 pt</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
+                  </ul>
+                  <div className="mt-4 text-xs text-center font-bold text-indigo-900 bg-indigo-200 py-2 rounded-xl">Acerto do Placar Exato: 5 pontos no total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-slate-100 mt-6 pt-4 flex items-center justify-between">
+            <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">Classificação Geral</span>
+            <span className="text-xs font-bold text-fuchsia-700">Soma Automática</span>
+          </div>
+        </motion.div>
       </div>
 
       {/* Info Warning Card */}
