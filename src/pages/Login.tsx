@@ -17,17 +17,35 @@ export default function Login() {
     setError('');
     setLoading(true);
     
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const formEmail = (formData.get('email') as string || email || '').trim();
+    const formPassword = formData.get('password') as string || password || '';
+
+    console.log('[DEBUG] Login Info - Auth exists:', !!auth, 'Email:', formEmail, 'Password length:', formPassword.length);
+    if (!auth) {
+      setError('Erro de inicialização do Firebase Auth.');
+      setLoading(false);
+      return;
+    }
+
+    if (!formEmail || !formPassword) {
+      setError('Por favor, preencha o e-mail e a senha.');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, formEmail, formPassword);
       
       const userRef = doc(db, 'users', userCredential.user.uid);
       const docSnap = await getDoc(userRef);
       
       if (!docSnap.exists()) {
-        const userRole = email.startsWith('allanjonesms') ? 'admin' : 'user';
+        const userRole = formEmail.startsWith('allanjonesms') ? 'admin' : 'user';
         await setDoc(userRef, {
-          name: userCredential.user.displayName || email.split('@')[0],
-          email: email,
+          name: userCredential.user.displayName || formEmail.split('@')[0],
+          email: formEmail,
           phone: '',
           pix_key: '',
           balance: 0,
@@ -52,6 +70,13 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
+    
+    console.log('[DEBUG] Google Login Info - Auth exists:', !!auth);
+    if (!auth) {
+      setError('Erro de inicialização do Firebase Auth para login com Google.');
+      setLoading(false);
+      return;
+    }
     
     try {
       const provider = new GoogleAuthProvider();
@@ -143,6 +168,7 @@ export default function Login() {
             <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5 ml-1">E-mail</label>
             <input 
               type="email" 
+              name="email"
               required
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-600 outline-none text-slate-800 placeholder-slate-400 transition-all font-medium text-sm"
               value={email}
@@ -152,13 +178,14 @@ export default function Login() {
           </div>
           <div>
             <div className="flex justify-between items-center mb-1.5 ml-1 mr-1">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Senha</label>
+               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Senha</label>
               <Link to="/forgot-password" className="text-xs text-emerald-600 hover:text-emerald-700 font-bold transition-colors">
                 Esqueci minha senha
               </Link>
             </div>
             <input 
               type="password" 
+              name="password"
               required
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-600 outline-none text-slate-800 placeholder-slate-400 transition-all font-medium text-sm"
               value={password}
