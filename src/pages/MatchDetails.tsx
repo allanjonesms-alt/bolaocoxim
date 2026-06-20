@@ -35,6 +35,11 @@ export default function MatchDetails() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const home = match?.team1?.toLowerCase() || '';
+  const away = match?.team2?.toLowerCase() || '';
+  const isBrasilHaiti = (home.includes('brasil') && away.includes('haiti')) || 
+                        (home.includes('haiti') && away.includes('brasil'));
+
   useEffect(() => {
     if (match) {
       setLive1(match.liveResult1 ?? 0);
@@ -724,24 +729,26 @@ export default function MatchDetails() {
                 <span className="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-mono font-bold">{bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length} Palpites</span>
               </span>
               
-              {match && (match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000)) && (
+              {match && (match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000) || isBrasilHaiti) && (
                 <button
                   onClick={async () => {
                     if (printingPdf) return;
 
-                    const matchTime = new Date(match.date).getTime();
-                    const closingTime = matchTime - 30 * 60 * 1000;
-                    const pdfAvailableTime = closingTime + 15 * 60 * 1000;
-                    const nowTime = Date.now();
-                    
-                    if (nowTime < pdfAvailableTime) {
-                      const diffMs = pdfAvailableTime - nowTime;
-                      const totalSeconds = Math.ceil(diffMs / 1000);
-                      const minutes = Math.floor(totalSeconds / 60);
-                      const seconds = totalSeconds % 60;
-                      const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
-                      showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
-                      return;
+                    if (!isBrasilHaiti) {
+                      const matchTime = new Date(match.date).getTime();
+                      const closingTime = matchTime - 30 * 60 * 1000;
+                      const pdfAvailableTime = closingTime + 15 * 60 * 1000;
+                      const nowTime = Date.now();
+                      
+                      if (nowTime < pdfAvailableTime) {
+                        const diffMs = pdfAvailableTime - nowTime;
+                        const totalSeconds = Math.ceil(diffMs / 1000);
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const seconds = totalSeconds % 60;
+                        const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
+                        showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                        return;
+                      }
                     }
 
                     setPrintingPdf(true);

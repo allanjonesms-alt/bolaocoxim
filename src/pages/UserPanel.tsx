@@ -121,8 +121,20 @@ export default function UserPanel() {
       alert('Valor inválido ou saldo insuficiente.');
       return;
     }
+
+    const currentPixKey = (profile?.pix_key || pixKeyInput || '').trim();
+    if (!currentPixKey) {
+      alert('Chave PIX obrigatória. Por favor, digite sua chave PIX para podermos efetuar a transferência.');
+      return;
+    }
     
     try {
+      if (profile?.pix_key !== currentPixKey) {
+        await updateDoc(doc(db, 'users', user!.uid), {
+          pix_key: currentPixKey
+        });
+      }
+
       await addDoc(collection(db, 'transactions'), {
         userId: user!.uid,
         type: 'withdrawal',
@@ -312,6 +324,18 @@ export default function UserPanel() {
                 </button>
               ) : (
                 <div className="mt-auto space-y-4">
+                  {!(profile?.pix_key || '').trim() && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Chave PIX Obrigatória para Receber o Saque</label>
+                      <input 
+                        type="text" 
+                        value={pixKeyInput} 
+                        onChange={e => setPixKeyInput(e.target.value)} 
+                        placeholder="Digite sua chave PIX aqui..."
+                        className="w-full px-4 py-2.5 bg-white border border-red-200 focus:border-red-450 rounded-xl outline-none text-slate-800 text-xs font-mono"
+                      />
+                    </div>
+                  )}
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                     <input 
@@ -564,6 +588,18 @@ export default function UserPanel() {
                   </button>
                 ) : (
                   <div className="mt-auto space-y-4">
+                    {!(profile?.pix_key || '').trim() && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-red-600 uppercase tracking-wider block">Chave PIX Obrigatória para Receber o Saque</label>
+                        <input 
+                          type="text" 
+                          value={pixKeyInput} 
+                          onChange={e => setPixKeyInput(e.target.value)} 
+                          placeholder="Digite sua chave PIX aqui..."
+                          className="w-full px-4 py-2.5 bg-white border border-red-200 focus:border-red-450 rounded-xl outline-none text-slate-800 text-xs font-mono"
+                        />
+                      </div>
+                    )}
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
                       <input 

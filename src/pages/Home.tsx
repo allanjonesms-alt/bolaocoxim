@@ -25,6 +25,13 @@ export default function Home() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const isBrasilHaitiMatch = (m: Match): boolean => {
+    const h = m.team1?.toLowerCase() || '';
+    const a = m.team2?.toLowerCase() || '';
+    return (h.includes('brasil') && a.includes('haiti')) || 
+           (h.includes('haiti') && a.includes('brasil'));
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(Date.now());
@@ -112,6 +119,9 @@ export default function Home() {
   }, []);
 
   const checkPdfAvailability = (match: Match): { allowed: boolean; remainingText?: string } => {
+    if (isBrasilHaitiMatch(match)) {
+      return { allowed: true };
+    }
     const matchTime = new Date(match.date).getTime();
     const closingTime = matchTime - 30 * 60 * 1000;
     const pdfAvailableTime = closingTime + 15 * 60 * 1000; // 15 mins after closure
@@ -668,7 +678,7 @@ export default function Home() {
                           </span>
                         </div>
                         
-                        {!isOpen ? (
+                        {!isOpen || isBrasilHaitiMatch(match) ? (
                           <button
                             onClick={async (e) => {
                               e.preventDefault();
@@ -793,7 +803,7 @@ export default function Home() {
                           </span>
                         </div>
                         
-                        {!isOpen ? (
+                        {!isOpen || isBrasilHaitiMatch(match) ? (
                           <button
                             onClick={async (e) => {
                               e.preventDefault();
