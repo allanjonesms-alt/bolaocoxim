@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match, Bet } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
@@ -18,6 +18,12 @@ export default function Home() {
   const [printingPdfId, setPrintingPdfId] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [winnersSettings, setWinnersSettings] = useState<{ active: boolean; matchId: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -73,7 +79,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'matches'), orderBy('date', 'asc'));
+    const q = query(collection(db, 'matches'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
       setMatches(matchData);
@@ -104,6 +110,23 @@ export default function Home() {
 
     return () => { unsubscribe(); unsubSettings(); };
   }, []);
+
+  const checkPdfAvailability = (match: Match): { allowed: boolean; remainingText?: string } => {
+    const matchTime = new Date(match.date).getTime();
+    const closingTime = matchTime - 30 * 60 * 1000;
+    const pdfAvailableTime = closingTime + 15 * 60 * 1000; // 15 mins after closure
+    const nowTime = Date.now();
+    
+    if (nowTime < pdfAvailableTime) {
+      const diffMs = pdfAvailableTime - nowTime;
+      const totalSeconds = Math.ceil(diffMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
+      return { allowed: false, remainingText };
+    }
+    return { allowed: true };
+  };
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500 font-medium">Carregando jogos...</div>;
@@ -180,6 +203,28 @@ export default function Home() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm animate-in slide-in-from-top-10 fade-in duration-300">
+          <div className={`p-2 rounded-xl shadow-xl ${toast.type === 'success' ? 'bg-emerald-50' : toast.type === 'warning' ? 'bg-amber-50' : 'bg-red-50'}`}>
+            <div className={`flex items-start gap-4 p-4 border rounded-lg bg-white ${toast.type === 'success' ? 'border-emerald-200' : toast.type === 'warning' ? 'border-amber-200' : 'border-red-200'}`}>
+              <div className={`p-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-100' : toast.type === 'warning' ? 'bg-amber-100' : 'bg-red-100'}`}>
+                {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : toast.type === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-600" /> : <X className="w-5 h-5 text-red-600" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {toast.type === 'success' ? 'Sucesso' : toast.type === 'warning' ? 'Aviso' : 'Erro'}
+                </p>
+                <p className="text-sm font-bold text-slate-800 leading-tight">{toast.message}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer" title="Fechar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-emerald-800 to-emerald-950 p-6 sm:p-8 rounded-3xl shadow-lg border border-yellow-400/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/10 rounded-full blur-[80px] pointer-events-none"></div>
         <div className="relative z-10 w-full flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -629,6 +674,13 @@ export default function Home() {
                               e.preventDefault();
                               e.stopPropagation();
                               if (printingPdfId) return;
+
+                              const { allowed, remainingText } = checkPdfAvailability(match);
+                              if (!allowed) {
+                                showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                                return;
+                              }
+
                               setPrintingPdfId(match.id);
                               await generateMatchBetsPDF(match);
                               setPrintingPdfId(null);
@@ -747,6 +799,13 @@ export default function Home() {
                               e.preventDefault();
                               e.stopPropagation();
                               if (printingPdfId) return;
+
+                              const { allowed, remainingText } = checkPdfAvailability(match);
+                              if (!allowed) {
+                                showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                                return;
+                              }
+
                               setPrintingPdfId(match.id);
                               await generateMatchBetsPDF(match);
                               setPrintingPdfId(null);

@@ -728,6 +728,22 @@ export default function MatchDetails() {
                 <button
                   onClick={async () => {
                     if (printingPdf) return;
+
+                    const matchTime = new Date(match.date).getTime();
+                    const closingTime = matchTime - 30 * 60 * 1000;
+                    const pdfAvailableTime = closingTime + 15 * 60 * 1000;
+                    const nowTime = Date.now();
+                    
+                    if (nowTime < pdfAvailableTime) {
+                      const diffMs = pdfAvailableTime - nowTime;
+                      const totalSeconds = Math.ceil(diffMs / 1000);
+                      const minutes = Math.floor(totalSeconds / 60);
+                      const seconds = totalSeconds % 60;
+                      const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
+                      showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                      return;
+                    }
+
                     setPrintingPdf(true);
                     await generateMatchBetsPDF(match);
                     setPrintingPdf(false);
