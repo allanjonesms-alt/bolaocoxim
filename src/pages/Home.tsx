@@ -186,6 +186,7 @@ export default function Home() {
 
   const officialMatches = matches.filter(match => {
     if (match.isPromotional) return false;
+    if (match.status === 'finished') return false; // remove finished matches
     const matchDate = new Date(match.date).getTime();
     const isLive = match.status !== 'finished' && now >= matchDate;
     return !isLive;
@@ -573,8 +574,9 @@ export default function Home() {
 
           {officialMatches.length > 0 && (
             <div>
-              <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center border-b border-slate-200 pb-3">
-                Jogos Oficiais 
+              <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
+                <span>Jogos Oficiais</span>
+                <Link to="/matches" className="text-sm font-sans font-bold text-emerald-600 hover:text-emerald-700 transition">Ver todos</Link>
               </h2>
 
               {/* Informação Importante sobre Encerramento e PDF - OCULTADO
