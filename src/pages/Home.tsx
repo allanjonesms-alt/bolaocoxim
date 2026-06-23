@@ -170,7 +170,7 @@ export default function Home() {
     const closingTime = matchDate - 30 * 60 * 1000;
     const timeLeft = closingTime - now;
     return timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000;
-  });
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const normalPromotionalMatches = matches.filter(match => {
     if (!match.isPromotional) return false;
@@ -182,7 +182,7 @@ export default function Home() {
       if (timeLeft > 0 && timeLeft <= 3 * 60 * 60 * 1000) return false;
     }
     return true;
-  });
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const officialMatches = matches.filter(match => {
     if (match.isPromotional) return false;
