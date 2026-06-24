@@ -118,6 +118,58 @@ export default function Home() {
     return () => { unsubscribe(); unsubSettings(); };
   }, []);
 
+  const [liveFixtures, setLiveFixtures] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchLiveMatches = async () => {
+      try {
+        const res = await fetch("/api/live-matches");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setLiveFixtures(json.data);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch live matches", e);
+      }
+    };
+    
+    fetchLiveMatches();
+    const interval = setInterval(fetchLiveMatches, 60000); // poll every 1 minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const getLiveMatchStats = (match: Match) => {
+    const norm1 = match.team1?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const norm2 = match.team2?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    
+    const activeFixture = liveFixtures.find((f: any) => {
+      const h = f.teams.home.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const a = f.teams.away.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      
+      const checkMatch = (t1: string, t2: string) => {
+         return (h.includes(t1) || t1.includes(h) || (t1.startsWith('brasil') && h.startsWith('brazil')) || (t1.startsWith('jord') && h.startsWith('jordan')) || (t1.startsWith('arge') && h.startsWith('algeria')) || (t1.startsWith('alem') && h.startsWith('german'))) &&
+                (a.includes(t2) || t2.includes(a) || (t2.startsWith('brasil') && a.startsWith('brazil')) || (t2.startsWith('jord') && a.startsWith('jordan')) || (t2.startsWith('arge') && a.startsWith('algeria')) || (t2.startsWith('alem') && a.startsWith('german')));
+      };
+      
+      return checkMatch(norm1, norm2) || checkMatch(norm2, norm1);
+    });
+
+    if (activeFixture) {
+      const h = activeFixture.teams.home.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const isInverse = h.includes(norm2) || norm2.includes(h) || (norm2.startsWith('brasil') && h.startsWith('brazil')) || (norm2.startsWith('jord') && h.startsWith('jordan')) || (norm2.startsWith('arge') && h.startsWith('algeria')) || (norm2.startsWith('alem') && h.startsWith('german'));
+      
+      return {
+        l1: isInverse ? activeFixture.goals.away : activeFixture.goals.home,
+        l2: isInverse ? activeFixture.goals.home : activeFixture.goals.away,
+        elapsed: activeFixture.fixture.status.elapsed ? `${activeFixture.fixture.status.elapsed}'` : 'Ao Vivo'
+      };
+    }
+    
+    return { l1: match.liveResult1 ?? 0, l2: match.liveResult2 ?? 0, elapsed: null };
+  };
+
   const checkPdfAvailability = (match: Match): { allowed: boolean; remainingText?: string } => {
     if (isBrasilHaitiMatch(match)) {
       return { allowed: true };
@@ -307,7 +359,7 @@ export default function Home() {
                 Prêmio Estimado Rank 1
               </span>
               <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1">
-                R$ {(totalPrizePool * 9).toFixed(2)}
+                R$ {(totalPrizePool * 7).toFixed(2)}
               </h3>
               <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -395,14 +447,14 @@ export default function Home() {
                   const date = new Date(match.date);
                   const isPromo = match.isPromotional;
 
+                  const { l1, l2, elapsed } = getLiveMatchStats(match);
+                  
                   // Calculate bets stats
                   const matchBets = bets.filter(b => b.matchId === match.id && b.status === 'confirmed');
                   const totalBets = matchBets.length;
                   const eligibleBets = matchBets.filter(b => {
                     const p1 = parseInt(b.predicted1, 10);
                     const p2 = parseInt(b.predicted2, 10);
-                    const l1 = match.liveResult1 ?? 0;
-                    const l2 = match.liveResult2 ?? 0;
                     return !isNaN(p1) && !isNaN(p2) && p1 >= l1 && p2 >= l2;
                   }).length;
 
@@ -415,7 +467,7 @@ export default function Home() {
                       {/* Live Badge */}
                       <div className="absolute top-0 right-0 bg-red-650 text-white font-mono text-[9px] font-black px-3.5 py-1.5 rounded-bl-xl uppercase tracking-widest relative z-20 shadow-sm flex items-center gap-1 animate-pulse">
                         <span className="h-1.5 w-1.5 rounded-full bg-white inline-block"></span>
-                        AO VIVO
+                        {elapsed || 'AO VIVO'}
                       </div>
 
                       <div className="bg-red-50/50 px-5 py-3.5 border-b border-red-100 flex items-center justify-between text-sm relative z-10 pr-24">
@@ -443,9 +495,9 @@ export default function Home() {
                           <div className="w-1/3 flex flex-col items-center justify-center">
                             <span className="text-[9px] text-red-500 font-black uppercase tracking-wider mb-2">PLACAR</span>
                             <div className="bg-red-600 text-white px-4.5 py-2 rounded-xl font-display text-2xl font-black flex space-x-2.5 shadow-md shadow-red-500/20">
-                              <span>{match.liveResult1 ?? 0}</span>
+                              <span>{l1}</span>
                               <span className="text-red-305 opacity-85 animate-pulse">:</span>
-                              <span>{match.liveResult2 ?? 0}</span>
+                              <span>{l2}</span>
                             </div>
                           </div>
 

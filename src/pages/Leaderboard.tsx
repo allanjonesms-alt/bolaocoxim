@@ -101,7 +101,7 @@ export default function Leaderboard() {
             <span className="text-yellow-400 text-4xl">R$ {prizePool.toFixed(2)}</span>
             <div className="mt-4 pt-4 border-t border-emerald-800/50 w-full text-center">
               <span className="text-emerald-300 text-[10px] uppercase tracking-widest block mb-1 font-sans">Prêmio Estimado*</span>
-              <span className="text-emerald-400 text-xl font-black">R$ {(prizePool * 9).toFixed(2)}</span>
+              <span className="text-emerald-400 text-xl font-black">R$ {(prizePool * 7).toFixed(2)}</span>
             </div>
           </div>
         </div>

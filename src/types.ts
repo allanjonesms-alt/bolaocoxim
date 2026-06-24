@@ -27,6 +27,9 @@ export interface Match {
   status: MatchStatus;
   result1?: number;
   result2?: number;
+  liveResult1?: number;
+  liveResult2?: number;
+  elapsed?: string;
   poolTotal: number;
   isPromotional?: boolean;
 }

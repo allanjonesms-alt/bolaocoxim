@@ -19,6 +19,63 @@ export default function MatchDetails() {
   const [predict1, setPredict1] = useState<string>('');
   const [predict2, setPredict2] = useState<string>('');
   const [placingBet, setPlacingBet] = useState(false);
+  const [liveFixtures, setLiveFixtures] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchLiveMatches = async () => {
+      try {
+        const res = await fetch("/api/live-matches");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setLiveFixtures(json.data);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch live matches", e);
+      }
+    };
+    
+    fetchLiveMatches();
+    const interval = setInterval(fetchLiveMatches, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getLiveStats = (m: Match) => {
+    const norm1 = m.team1?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const norm2 = m.team2?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    
+    const activeFixture = liveFixtures.find((f: any) => {
+      const h = f.teams.home.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const a = f.teams.away.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      
+      const checkMatch = (t1: string, t2: string) => {
+         return (h.includes(t1) || t1.includes(h) || (t1.startsWith('brasil') && h.startsWith('brazil')) || (t1.startsWith('jord') && h.startsWith('jordan')) || (t1.startsWith('arge') && h.startsWith('algeria')) || (t1.startsWith('alem') && h.startsWith('german'))) &&
+                (a.includes(t2) || t2.includes(a) || (t2.startsWith('brasil') && a.startsWith('brazil')) || (t2.startsWith('jord') && a.startsWith('jordan')) || (t2.startsWith('arge') && a.startsWith('algeria')) || (t2.startsWith('alem') && a.startsWith('german')));
+      };
+      
+      return checkMatch(norm1, norm2) || checkMatch(norm2, norm1);
+    });
+
+    if (activeFixture) {
+      const h = activeFixture.teams.home.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const isInverse = h.includes(norm2) || norm2.includes(h) || (norm2.startsWith('brasil') && h.startsWith('brazil')) || (norm2.startsWith('jord') && h.startsWith('jordan')) || (norm2.startsWith('arge') && h.startsWith('algeria')) || (norm2.startsWith('alem') && h.startsWith('german'));
+      
+      const elapsed = activeFixture.fixture.status.elapsed;
+      let displayElapsed = 'Ao Vivo';
+      if (activeFixture.fixture.status.short === 'HT') displayElapsed = 'Intervalo';
+      else if (activeFixture.fixture.status.short === 'FT') displayElapsed = 'Encerrado';
+      else if (elapsed) displayElapsed = `${elapsed}'`;
+
+      return {
+        l1: isInverse ? activeFixture.goals.away : activeFixture.goals.home,
+        l2: isInverse ? activeFixture.goals.home : activeFixture.goals.away,
+        elapsed: displayElapsed
+      };
+    }
+    
+    return { l1: m.liveResult1 ?? 0, l2: m.liveResult2 ?? 0, elapsed: null };
+  };
   const [betError, setBetError] = useState('');
   const [printingPdf, setPrintingPdf] = useState(false);
 
@@ -385,6 +442,8 @@ export default function MatchDetails() {
     return 0;
   });
 
+  const { l1, l2, elapsed } = match ? getLiveStats(match) : { l1: 0, l2: 0, elapsed: null };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       {/* Toast Notification */}
@@ -452,12 +511,12 @@ export default function MatchDetails() {
                 <div className="flex flex-col items-center space-y-2">
                   <span className="text-[10px] bg-red-50 text-red-600 px-3 py-1 rounded-full font-black uppercase tracking-wider animate-pulse flex items-center gap-1.5 border border-red-105">
                     <span className="h-1.5 w-1.5 rounded-full bg-red-600 inline-block animate-ping"></span>
-                    Ao Vivo
+                    {elapsed || 'Ao Vivo'}
                   </span>
                   <div className="bg-red-650 text-white px-7 py-3 rounded-2xl font-display text-4xl font-extrabold flex space-x-4 shadow-lg shadow-red-500/20">
-                    <span>{match.liveResult1 ?? 0}</span>
+                    <span>{l1}</span>
                     <span className="text-red-205 opacity-80 animate-pulse">:</span>
-                    <span>{match.liveResult2 ?? 0}</span>
+                    <span>{l2}</span>
                   </div>
                 </div>
               ) : (
@@ -776,10 +835,10 @@ export default function MatchDetails() {
                   const [pred1, pred2] = score.split('x').map(Number);
                   const isStarted = new Date(match.date).getTime() <= Date.now();
                   const isImpossible = isStarted && match.status !== 'finished' && (
-                    pred1 < (match.liveResult1 ?? 0) || pred2 < (match.liveResult2 ?? 0)
+                    pred1 < l1 || pred2 < l2
                   );
                   const isWinning = isStarted && match.status !== 'finished' && (
-                    pred1 === (match.liveResult1 ?? 0) && pred2 === (match.liveResult2 ?? 0)
+                    pred1 === l1 && pred2 === l2
                   );
                   
                   return (
