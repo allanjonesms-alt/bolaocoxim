@@ -4,6 +4,7 @@ import { db } from '../lib/firebase';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import { LEADERBOARD_PRIZE_MULTIPLIER } from '../utils/constants';
+import { Bet } from '../types';
 
 // Users point aggregations
 interface LeaderboardRow {
@@ -14,27 +15,29 @@ interface LeaderboardRow {
 
 export default function Leaderboard() {
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [bets, setBets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [prizePool, setPrizePool] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // We get all bets and sum points for each user.
-    // In production with thousands of users, you'd maintain a `total_points` field on the user profile.
+    const matchesQuery = query(collection(db, 'matches'));
+    const unsubscribeMatches = onSnapshot(matchesQuery, (snapshot) => {
+      const matchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMatches(matchData);
+    });
+
     const betsQuery = query(collection(db, 'bets'));
     const unsubscribeBets = onSnapshot(betsQuery, (snapshot) => {
-      let calculatedPrizePool = 0;
+      const allBets: any[] = [];
       const scores: Record<string, { userName: string, points: number }> = {};
       
       snapshot.docs.forEach(doc => {
-        const bet = doc.data();
+        const betData = doc.data() as Bet;
+        const bet = { ...betData, id: doc.id };
+        allBets.push(bet);
         if (bet.status !== 'confirmed') return;
-        
-        if (bet.amount === 1) {
-          calculatedPrizePool += bet.amount * 0.50;
-        } else {
-          calculatedPrizePool += bet.amount * 0.02;
-        }
 
         if (!scores[bet.userId]) {
           scores[bet.userId] = { userName: bet.userName, points: 0 };
@@ -48,7 +51,7 @@ export default function Leaderboard() {
         points: scores[userId].points
       })).sort((a, b) => b.points - a.points);
       
-      setPrizePool(calculatedPrizePool);
+      setBets(allBets);
       setBoard(rows);
       setError(null);
       setLoading(false);
@@ -63,8 +66,27 @@ export default function Leaderboard() {
       }
     });
 
-    return () => unsubscribeBets();
+    return () => {
+      unsubscribeBets();
+      unsubscribeMatches();
+    };
   }, []);
+
+  useEffect(() => {
+    if (matches.length === 0 || bets.length === 0) return;
+    
+    let calculatedPrizePool = 0;
+    bets.forEach(bet => {
+      if (bet.status !== 'confirmed') return;
+      const match = matches.find(m => m.id === bet.matchId);
+      if (match?.isPromotional) {
+        calculatedPrizePool += (bet.amount || ((match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.50;
+      } else {
+        calculatedPrizePool += (bet.amount || 5) * 0.02;
+      }
+    });
+    setPrizePool(calculatedPrizePool);
+  }, [bets, matches]);
 
   if (loading) {
     return <div className="p-12 text-center text-slate-500 font-medium">Carregando classificação...</div>;

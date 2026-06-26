@@ -119,7 +119,7 @@ export async function generateMatchBetsPDF(match: Match): Promise<boolean> {
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    const costText = match.isPromotional ? 'Jogo Promocional (R$ 1,00)' : 'Jogo Oficial (R$ 10,00)';
+    const costText = match.isPromotional ? `Jogo Promocional (R$ ${match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL' ? '2,00' : '1,00'})` : 'Jogo Oficial (R$ 5,00)';
     doc.text(`Tipo do Jogo: ${costText}`, 190, 73, { align: 'right' });
 
     // 6. Bets Table Header and content

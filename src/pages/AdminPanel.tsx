@@ -643,13 +643,13 @@ export default function AdminPanel() {
   const totalApostado = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
     const m = matches.find(m => m.id === b.matchId);
     if (!m || m.status === 'finished') return sum;
-    return sum + (b.amount || (m.isPromotional ? 1 : 5));
+    return sum + (b.amount || (m.isPromotional ? ((m.phase === '2ª FASE' || m.phase === 'OITAVAS DE FINAL') ? 2 : 1) : 5));
   }, 0);
 
   const totalCaixa = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
     const m = matches.find(m => m.id === b.matchId);
     if (m?.isPromotional) {
-      return sum + (b.amount || 1) * 0.5;
+      return sum + (b.amount || ((m.phase === '2ª FASE' || m.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.5;
     }
     return sum + (b.amount || 5) * 0.1;
   }, 0);

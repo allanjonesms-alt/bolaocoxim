@@ -301,9 +301,13 @@ export default function MatchDetails() {
       // Check for existing pending bet
       const pendingBets = bets.filter(b => b.userId === user.uid && b.status === 'pending');
       
-      let betAmount = match.isPromotional ? 1 : 5;
-      if (match.isPromotional && (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL')) {
-        betAmount = 2;
+      let betAmount = 5;
+      if (match.isPromotional) {
+        if (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') {
+          betAmount = 2;
+        } else {
+          betAmount = 1;
+        }
       }
       const hasBalance = profile.balance >= betAmount;
       if (!hasBalance && pendingBets.length > 0) {
@@ -707,7 +711,7 @@ export default function MatchDetails() {
             <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center pb-4 border-b border-slate-100">
               Fazer Aposta 
               <span className={`${match.isPromotional ? 'text-indigo-600' : 'text-emerald-600'} ml-2 font-mono text-lg`}>
-                (R$ {match.isPromotional ? '1,00' : '5,00'})
+                (R$ {match.isPromotional ? (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL' ? '2,00' : '1,00') : '5,00'})
               </span>
             </h2>
             

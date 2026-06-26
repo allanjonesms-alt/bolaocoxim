@@ -56,12 +56,6 @@ export default function Home() {
         allBets.push(bet);
         if (bet.status !== 'confirmed') return;
         
-        if (bet.amount === 1) {
-          calculatedPrizePool += bet.amount * 0.50;
-        } else {
-          calculatedPrizePool += bet.amount * 0.02;
-        }
-
         if (!scores[bet.userId]) {
           scores[bet.userId] = { userName: bet.userName, points: 0 };
         }
@@ -74,7 +68,6 @@ export default function Home() {
         points: scores[userId].points
       })).sort((a, b) => b.points - a.points);
       
-      setTotalPrizePool(calculatedPrizePool);
       setBets(allBets);
       if (rows.length > 0) {
         setLeader(rows[0]);
@@ -120,6 +113,22 @@ export default function Home() {
 
     return () => { unsubscribe(); unsubSettings(); };
   }, []);
+
+  useEffect(() => {
+    if (matches.length === 0 || bets.length === 0) return;
+    
+    let calculatedPrizePool = 0;
+    bets.forEach(bet => {
+      if (bet.status !== 'confirmed') return;
+      const match = matches.find(m => m.id === bet.matchId);
+      if (match?.isPromotional) {
+        calculatedPrizePool += (bet.amount || ((match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.50;
+      } else {
+        calculatedPrizePool += (bet.amount || 5) * 0.02;
+      }
+    });
+    setTotalPrizePool(calculatedPrizePool);
+  }, [bets, matches]);
 
   const [liveFixtures, setLiveFixtures] = useState<any[]>([]);
 
@@ -568,7 +577,7 @@ export default function Home() {
                     🚨 DESTAQUE: ÚLTIMAS HORAS PARA PALPITAR!
                   </h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    Estes jogos promocionais se encerram em menos de 3 horas! Faça já seus palpites por apenas R$ 1,00.
+                    Estes jogos promocionais se encerram em menos de 3 horas! Faça já seus palpites por apenas R$ 1,00 (ou R$ 2,00 a partir da 2ª Fase).
                   </p>
                 </div>
               </div>
@@ -634,7 +643,7 @@ export default function Home() {
                         <div className="text-sm flex flex-col items-end">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-red-600 font-mono text-base">
-                            R$ 1.00
+                            R$ {(match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? '2.00' : '1.00'}
                           </span>
                         </div>
                       </div>
@@ -795,7 +804,7 @@ export default function Home() {
               <h2 className="text-xl font-display font-bold text-indigo-800 mb-2 flex items-center gap-2">
                 🌟 Jogos Promocionais
               </h2>
-              <p className="text-slate-500 text-sm mb-6 border-b border-indigo-100 pb-4">Estas partidas valem somente para pontuação na classificação geral. O palpite custa R$ 1,00.</p>
+              <p className="text-slate-500 text-sm mb-6 border-b border-indigo-100 pb-4">Estas partidas valem somente para pontuação na classificação geral. O palpite custa R$ 1,00 (ou R$ 2,00 a partir da 2ª Fase).</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {normalPromotionalMatches.map(match => {
@@ -874,7 +883,7 @@ export default function Home() {
                         <div className="text-sm flex flex-col">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-indigo-700 font-mono text-base">
-                            R$ 1.00
+                            R$ {(match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? '2.00' : '1.00'}
                           </span>
                         </div>
                         
