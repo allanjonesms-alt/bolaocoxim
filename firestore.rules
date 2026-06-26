@@ -20,8 +20,8 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         (request.auth.token.email != null && request.auth.token.email == 'allanjonesms@gmail.com') ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'allanjonesms@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
@@ -134,10 +134,10 @@ service cloud.firestore {
     function isValidTransaction(data) {
       return data.keys().hasAll(['userId', 'type', 'amount', 'status', 'timestamp'])
         && data.userId is string
-        && data.type in ['deposit', 'withdrawal', 'bet', 'prize']
+        && data.type in ['deposit', 'withdrawal', 'manual_deduction', 'bet', 'prize']
         && data.amount is number
         && data.status in ['pending', 'confirmed']
-        && data.timestamp == request.time;
+        && data.timestamp is timestamp;
     }
 
     match /transactions/{transactionId} {
