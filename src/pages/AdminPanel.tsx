@@ -42,6 +42,7 @@ export default function AdminPanel() {
   const [flagFile2, setFlagFile2] = useState<File | null>(null);
   const [newMatchDate, setNewMatchDate] = useState('');
   const [newMatchIsPromotional, setNewMatchIsPromotional] = useState(false);
+  const [newMatchPhase, setNewMatchPhase] = useState('2ª FASE');
   const [uploadingMatch, setUploadingMatch] = useState(false);
 
   // Edit match state
@@ -49,6 +50,7 @@ export default function AdminPanel() {
   const [editTeam1, setEditTeam1] = useState('');
   const [editTeam2, setEditTeam2] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [editPhase, setEditPhase] = useState('2ª FASE');
   const [editFlagFile1, setEditFlagFile1] = useState<File | null>(null);
   const [editFlagFile2, setEditFlagFile2] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -270,12 +272,14 @@ export default function AdminPanel() {
         date: new Date(newMatchDate).toISOString(),
         status: 'open',
         poolTotal: 0,
-        isPromotional: newMatchIsPromotional
+        isPromotional: newMatchIsPromotional,
+        phase: newMatchPhase
       });
       setNewMatchTeam1(''); setNewMatchTeam2(''); 
       setFlagFile1(null); setFlagFile2(null);
       setNewMatchDate('');
       setNewMatchIsPromotional(false);
+      setNewMatchPhase('2ª FASE');
       showNotification('Partida adicionada com sucesso!');
     } catch(err) {
       handleFirestoreError(err, OperationType.CREATE, 'matches');
@@ -309,6 +313,7 @@ export default function AdminPanel() {
     const d = new Date(m.date);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     setEditDate(d.toISOString().slice(0, 16));
+    setEditPhase(m.phase || '2ª FASE');
     setEditFlagFile1(null);
     setEditFlagFile2(null);
   };
@@ -335,7 +340,8 @@ export default function AdminPanel() {
         team2: editTeam2,
         date: new Date(editDate).toISOString(),
         flag1: flag1Url,
-        flag2: flag2Url
+        flag2: flag2Url,
+        phase: editPhase
       });
       
       setEditingMatchId(null);
@@ -732,16 +738,32 @@ export default function AdminPanel() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm" 
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Jogo Promocional?</label>
-                <select 
-                  value={newMatchIsPromotional ? 'sim' : 'nao'} 
-                  onChange={e => setNewMatchIsPromotional(e.target.value === 'sim')} 
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm"
-                >
-                  <option value="nao">NÃO</option>
-                  <option value="sim">SIM</option>
-                </select>
+              <div className="flex gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Fase do Torneio</label>
+                  <select 
+                    value={newMatchPhase} 
+                    onChange={e => setNewMatchPhase(e.target.value)} 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm"
+                  >
+                    <option value="2ª FASE">2ª FASE</option>
+                    <option value="OITAVAS DE FINAL">OITAVAS DE FINAL</option>
+                    <option value="QUARTAS DE FINAL">QUARTAS DE FINAL</option>
+                    <option value="SEMI FINAL">SEMI FINAL</option>
+                    <option value="FINAL">FINAL</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Jogo Promocional?</label>
+                  <select 
+                    value={newMatchIsPromotional ? 'sim' : 'nao'} 
+                    onChange={e => setNewMatchIsPromotional(e.target.value === 'sim')} 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm"
+                  >
+                    <option value="nao">NÃO</option>
+                    <option value="sim">SIM</option>
+                  </select>
+                </div>
               </div>
               <button 
                 type="submit" 
@@ -986,6 +1008,20 @@ export default function AdminPanel() {
                     onChange={(e) => setEditDate(e.target.value)} 
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/25 font-mono" 
                   />
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Fase do Torneio</label>
+                    <select 
+                      value={editPhase} 
+                      onChange={e => setEditPhase(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/25"
+                    >
+                      <option value="2ª FASE">2ª FASE</option>
+                      <option value="OITAVAS DE FINAL">OITAVAS DE FINAL</option>
+                      <option value="QUARTAS DE FINAL">QUARTAS DE FINAL</option>
+                      <option value="SEMI FINAL">SEMI FINAL</option>
+                      <option value="FINAL">FINAL</option>
+                    </select>
+                  </div>
                   
                   <div className="flex justify-end pt-2">
                     <button 
@@ -1016,8 +1052,10 @@ export default function AdminPanel() {
                         )}
                         <span className="text-slate-800 font-bold text-base">{m.team2}</span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2.5 font-medium">
-                        Status: <span className={`font-bold ${m.status === 'open' ? 'text-emerald-600' : 'text-amber-600'}`}>{m.status.toUpperCase()}</span>
+                      <p className="text-xs text-slate-500 mt-2.5 font-medium flex items-center gap-2">
+                        <span>Status: <span className={`font-bold ${m.status === 'open' ? 'text-emerald-600' : 'text-amber-600'}`}>{m.status.toUpperCase()}</span></span>
+                        <span className="text-slate-300">•</span>
+                        <span className="font-bold text-slate-700">{m.phase || '2ª FASE'}</span>
                       </p>
                       <p className="text-xs font-mono text-emerald-800 font-bold mt-1.5 bg-emerald-50 inline-block px-2.5 py-1 rounded-lg border border-emerald-100">
                         Pool arrecadado: R$ {m.poolTotal.toFixed(2)}

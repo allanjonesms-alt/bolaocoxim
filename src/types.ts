@@ -32,6 +32,7 @@ export interface Match {
   elapsed?: string;
   poolTotal: number;
   isPromotional?: boolean;
+  phase?: string;
 }
 
 export interface Bet {
