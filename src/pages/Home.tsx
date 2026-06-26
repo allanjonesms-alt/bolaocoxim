@@ -8,6 +8,7 @@ import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 
+// Teste de alteração para verificação de commit no GitHub
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,7 +314,7 @@ export default function Home() {
         </div>
         <div className="text-slate-700 text-sm leading-relaxed relative z-10 font-medium">
           <strong className="text-amber-800 font-extrabold mr-1">Dica de Campeão:</strong> 
-          Dobre suas chances de subir no ranking! Dê seus palpites nos <strong className="text-slate-900 font-bold">Jogos Promocionais</strong> (palpites de apenas R$ 1,00) para acumular mais pontos extras e disparar rumo ao topo da Classificação Geral!
+          Prepare-se! Nos jogos da fase de <strong className="text-slate-900 font-bold">16 avos e oitavas de final</strong>, o valor do palpite será de <strong className="text-slate-900 font-bold">R$ 2,00</strong> e a pontuação para o ranking será em <strong className="text-slate-900 font-bold">dobro</strong>! Fique atento para disparar rumo ao topo da Classificação Geral!
         </div>
       </div>
 
@@ -348,31 +349,49 @@ export default function Home() {
         </div>
 
         {/* Card do Prêmio Acumulado */}
-        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
+        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-400/10 transition-all"></div>
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl">
-              <Trophy className="h-7 w-7 text-emerald-600" />
+          
+          <div className="flex items-center justify-between relative z-10 w-full">
+            <div className="flex items-center gap-4">
+              <div className="bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl">
+                <Trophy className="h-7 w-7 text-emerald-600" />
+              </div>
+              <div>
+                <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                  Prêmio Estimado*
+                </span>
+                <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1 flex items-baseline gap-2">
+                  R$ {(totalPrizePool * 6).toFixed(2)} <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                </h3>
+                <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  Entrega em <strong className="text-slate-700">19/07 (Final da Copa)</strong>
+                </p>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                Prêmio Estimado Rank 1
-              </span>
-              <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1">
-                R$ {(totalPrizePool * 7).toFixed(2)}
-              </h3>
-              <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                Entrega em <strong className="text-slate-700">19/07 (Final da Copa)</strong>
-              </p>
+            <Link
+              to="/leaderboard"
+              className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2.5 rounded-xl transition-all shadow-sm shrink-0"
+            >
+              <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 relative z-10 pt-4 border-t border-emerald-100">
+            <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">1º Lugar</span>
+              <span className="font-mono font-bold text-emerald-800 text-sm">R$ {(totalPrizePool * 6 * 0.7).toFixed(2)}</span>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">2º Lugar</span>
+              <span className="font-mono font-bold text-slate-700 text-sm">R$ {(totalPrizePool * 6 * 0.2).toFixed(2)}</span>
+            </div>
+            <div className="bg-orange-50 rounded-xl p-2.5 border border-orange-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-0.5">3º Lugar</span>
+              <span className="font-mono font-bold text-orange-700 text-sm">R$ {(totalPrizePool * 6 * 0.1).toFixed(2)}</span>
             </div>
           </div>
-          <Link
-            to="/leaderboard"
-            className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2.5 rounded-xl transition-all shadow-sm"
-          >
-            <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
-          </Link>
         </div>
       </div>
 

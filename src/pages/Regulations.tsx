@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { BookOpen, Trophy, Clock, Coins, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// Teste de alteração para verificação de sincronização e commit no GitHub
 export default function Regulations() {
   const containerVariants = {
     hidden: { opacity: 0, y: 15 },

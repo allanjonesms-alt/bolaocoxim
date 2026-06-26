@@ -117,6 +117,9 @@ export default function AdminPanel() {
   const [editUserPhone, setEditUserPhone] = useState('');
   const [savingUserData, setSavingUserData] = useState(false);
 
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [deletingMatch, setDeletingMatch] = useState(false);
+
   const formatDateTime = (ts: any) => {
     if (!ts) return '-';
     let date: Date;
@@ -606,6 +609,24 @@ export default function AdminPanel() {
     }
   }
 
+  const handleDeleteMatch = (id: string) => {
+    setMatchToDelete(id);
+  }
+
+  const confirmDeleteMatch = async () => {
+    if (!matchToDelete) return;
+    setDeletingMatch(true);
+    try {
+      await deleteDoc(doc(db, 'matches', matchToDelete));
+      showNotification('Partida excluída com sucesso!');
+      setMatchToDelete(null);
+    } catch(err) {
+      handleFirestoreError(err, OperationType.DELETE, 'matches');
+    } finally {
+      setDeletingMatch(false);
+    }
+  }
+
   const totalSiteBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
 
   const totalApostado = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
@@ -1002,13 +1023,22 @@ export default function AdminPanel() {
                         Pool arrecadado: R$ {m.poolTotal.toFixed(2)}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => startEditMatch(m)} 
-                      className="text-slate-400 hover:text-emerald-750 p-2 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                      title="Editar Partida"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => startEditMatch(m)} 
+                        className="text-slate-400 hover:text-emerald-750 p-2 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        title="Editar Partida"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteMatch(m.id)} 
+                        className="text-slate-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Excluir Partida"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="flex gap-3 border-t border-slate-200/60 pt-4 mt-auto">
                     {m.status === 'open' && (
@@ -1244,6 +1274,61 @@ export default function AdminPanel() {
                   }`}
                 >
                   {isApprove ? 'Sim, Aprovar' : 'Sim, Recusar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Match Delete Confirmation Modal */}
+      {matchToDelete && (() => {
+        const m = matches.find(match => match.id === matchToDelete);
+        return (
+          <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+            <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col shadow-2xl relative">
+              {/* Header */}
+              <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 className="text-lg font-display font-bold text-slate-800 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <span>Confirmar Exclusão</span>
+                </h3>
+                <button 
+                  onClick={() => !deletingMatch && setMatchToDelete(null)} 
+                  className="text-slate-400 hover:text-slate-650 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors cursor-pointer"
+                  title="Fechar"
+                  disabled={deletingMatch}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4">
+                <p className="text-slate-650 text-sm leading-relaxed">
+                  Tem certeza que deseja <strong className="text-red-700 font-bold">excluir definitivamente</strong> a partida{' '}
+                  <strong className="text-slate-800 font-bold">{m ? `${m.team1} x ${m.team2}` : 'Carregando...'}</strong>?
+                </p>
+                <div className="bg-red-50 p-3 rounded-xl border border-red-200 text-xs text-red-700 space-y-1 font-semibold">
+                  Esta ação é irreversível e todas as apostas vinculadas a esta partida podem ficar órfãs.
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+                <button 
+                  onClick={() => !deletingMatch && setMatchToDelete(null)} 
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-xs transition-colors cursor-pointer uppercase tracking-wider"
+                  disabled={deletingMatch}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmDeleteMatch} 
+                  className="bg-red-600 hover:bg-red-700 rounded-xl px-4 py-2.5 font-bold text-xs transition-colors cursor-pointer uppercase tracking-wider text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={deletingMatch}
+                >
+                  {deletingMatch ? 'Excluindo...' : 'Sim, Excluir'}
                 </button>
               </div>
             </div>
