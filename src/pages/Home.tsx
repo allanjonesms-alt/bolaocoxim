@@ -537,7 +537,7 @@ export default function Home() {
 
                       <div className="bg-red-55/10 px-5 py-4 border-t border-red-100/50 flex justify-between items-center transition relative z-10">
                         <div className="text-xs flex flex-col text-slate-400 space-y-1.5">
-                          <span className="font-semibold">{date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || '2ª FASE'}</span>
+                          <span className="font-semibold">{date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || 'GRUPOS'}</span>
                           <span className="font-bold text-slate-650 bg-white border border-slate-200 shadow-sm px-2 py-1 rounded-md inline-flex items-center w-max">
                             {totalBets} palpites <span className="mx-1.5 text-slate-300">|</span> <span className="text-emerald-700 font-extrabold">{eligibleBets} aptos a vencer</span>
                           </span>
@@ -590,7 +590,7 @@ export default function Home() {
                       <div className="bg-indigo-50/80 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start pr-14">
                           <span className="text-indigo-600/80 font-bold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-indigo-300 mx-1">•</span> {match.phase || '2ª FASE'}
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-indigo-300 mx-1">•</span> {match.phase || 'GRUPOS'}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>
@@ -685,7 +685,7 @@ export default function Home() {
                       <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start">
                           <span className="text-slate-500 font-semibold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || '2ª FASE'}
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || 'GRUPOS'}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>
@@ -810,7 +810,7 @@ export default function Home() {
                       <div className="bg-indigo-100/50 px-5 py-3 border-b border-indigo-100 flex justify-between items-center text-sm relative z-10">
                         <div className="flex flex-col items-start">
                           <span className="text-indigo-600/80 font-semibold tracking-wide text-xs">
-                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-indigo-300 mx-1">•</span> {match.phase || '2ª FASE'}
+                            {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })} às {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })} <span className="text-indigo-300 mx-1">•</span> {match.phase || 'GRUPOS'}
                           </span>
                           <MatchCountdown matchDate={match.date} isOpen={isOpen} />
                         </div>

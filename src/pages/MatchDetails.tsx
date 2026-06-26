@@ -474,7 +474,7 @@ export default function MatchDetails() {
 
         <div className="bg-slate-50 px-8 py-5 border-b border-slate-100 flex justify-between items-center text-sm relative z-10 transition-colors">
           <span className="text-slate-500 font-semibold tracking-wide text-xs">
-            {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || '2ª FASE'}
+            {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} <span className="text-slate-300 mx-1">•</span> {match.phase || 'GRUPOS'}
           </span>
           <span className={`font-bold px-3.5 py-1.5 rounded-lg text-xs uppercase tracking-wider border flex items-center ${
             match.status === 'open' && (new Date(match.date).getTime() - Date.now() >= 30 * 60 * 1000) ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :

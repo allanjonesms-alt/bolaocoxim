@@ -42,7 +42,7 @@ export default function AdminPanel() {
   const [flagFile2, setFlagFile2] = useState<File | null>(null);
   const [newMatchDate, setNewMatchDate] = useState('');
   const [newMatchIsPromotional, setNewMatchIsPromotional] = useState(false);
-  const [newMatchPhase, setNewMatchPhase] = useState('2ª FASE');
+  const [newMatchPhase, setNewMatchPhase] = useState('GRUPOS');
   const [uploadingMatch, setUploadingMatch] = useState(false);
 
   // Edit match state
@@ -50,7 +50,7 @@ export default function AdminPanel() {
   const [editTeam1, setEditTeam1] = useState('');
   const [editTeam2, setEditTeam2] = useState('');
   const [editDate, setEditDate] = useState('');
-  const [editPhase, setEditPhase] = useState('2ª FASE');
+  const [editPhase, setEditPhase] = useState('GRUPOS');
   const [editFlagFile1, setEditFlagFile1] = useState<File | null>(null);
   const [editFlagFile2, setEditFlagFile2] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -279,7 +279,7 @@ export default function AdminPanel() {
       setFlagFile1(null); setFlagFile2(null);
       setNewMatchDate('');
       setNewMatchIsPromotional(false);
-      setNewMatchPhase('2ª FASE');
+      setNewMatchPhase('GRUPOS');
       showNotification('Partida adicionada com sucesso!');
     } catch(err) {
       handleFirestoreError(err, OperationType.CREATE, 'matches');
@@ -313,7 +313,7 @@ export default function AdminPanel() {
     const d = new Date(m.date);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     setEditDate(d.toISOString().slice(0, 16));
-    setEditPhase(m.phase || '2ª FASE');
+    setEditPhase(m.phase || 'GRUPOS');
     setEditFlagFile1(null);
     setEditFlagFile2(null);
   };
@@ -746,6 +746,7 @@ export default function AdminPanel() {
                     onChange={e => setNewMatchPhase(e.target.value)} 
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/35 focus:border-emerald-500/70 outline-none text-slate-800 font-medium text-sm"
                   >
+                    <option value="GRUPOS">GRUPOS</option>
                     <option value="2ª FASE">2ª FASE</option>
                     <option value="OITAVAS DE FINAL">OITAVAS DE FINAL</option>
                     <option value="QUARTAS DE FINAL">QUARTAS DE FINAL</option>
@@ -1015,6 +1016,7 @@ export default function AdminPanel() {
                       onChange={e => setEditPhase(e.target.value)} 
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/25"
                     >
+                      <option value="GRUPOS">GRUPOS</option>
                       <option value="2ª FASE">2ª FASE</option>
                       <option value="OITAVAS DE FINAL">OITAVAS DE FINAL</option>
                       <option value="QUARTAS DE FINAL">QUARTAS DE FINAL</option>
@@ -1055,7 +1057,7 @@ export default function AdminPanel() {
                       <p className="text-xs text-slate-500 mt-2.5 font-medium flex items-center gap-2">
                         <span>Status: <span className={`font-bold ${m.status === 'open' ? 'text-emerald-600' : 'text-amber-600'}`}>{m.status.toUpperCase()}</span></span>
                         <span className="text-slate-300">•</span>
-                        <span className="font-bold text-slate-700">{m.phase || '2ª FASE'}</span>
+                        <span className="font-bold text-slate-700">{m.phase || 'GRUPOS'}</span>
                       </p>
                       <p className="text-xs font-mono text-emerald-800 font-bold mt-1.5 bg-emerald-50 inline-block px-2.5 py-1 rounded-lg border border-emerald-100">
                         Pool arrecadado: R$ {m.poolTotal.toFixed(2)}
