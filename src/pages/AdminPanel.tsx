@@ -44,6 +44,7 @@ export default function AdminPanel() {
   const [newMatchIsPromotional, setNewMatchIsPromotional] = useState(false);
   const [newMatchPhase, setNewMatchPhase] = useState('GRUPOS');
   const [uploadingMatch, setUploadingMatch] = useState(false);
+  const [showAllMatches, setShowAllMatches] = useState(false);
 
   // Edit match state
   const [editingMatchId, setEditingMatchId] = useState<string | null>(null);
@@ -964,9 +965,14 @@ export default function AdminPanel() {
       {/* Gerenciar Partidas Section */}
       <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
         <h2 className="font-display font-bold mb-6 text-slate-800 text-lg uppercase tracking-wider">Gerenciar Partidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[...matches].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(m => (
-            <div key={m.id} className="bg-slate-50/70 border border-slate-200 p-6 rounded-2xl flex flex-col justify-between shadow-sm relative hover:border-slate-300 transition-colors">
+        {(() => {
+          const sortedMatches = [...matches].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          const displayMatches = showAllMatches ? sortedMatches : sortedMatches.slice(0, 10);
+          return (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {displayMatches.map(m => (
+                  <div key={m.id} className="bg-slate-50/70 border border-slate-200 p-6 rounded-2xl flex flex-col justify-between shadow-sm relative hover:border-slate-300 transition-colors">
               {editingMatchId === m.id ? (
                 <div className="space-y-4 w-full">
                   <div className="flex justify-between items-center mb-2">
@@ -1106,7 +1112,30 @@ export default function AdminPanel() {
               )}
             </div>
           ))}
-        </div>
+              </div>
+              {!showAllMatches && sortedMatches.length > 10 && (
+                <div className="mt-8 flex justify-center">
+                  <button
+                    onClick={() => setShowAllMatches(true)}
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors border border-slate-200 cursor-pointer text-sm"
+                  >
+                    Ver Mais Partidas
+                  </button>
+                </div>
+              )}
+              {showAllMatches && sortedMatches.length > 10 && (
+                <div className="mt-8 flex justify-center">
+                  <button
+                    onClick={() => setShowAllMatches(false)}
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors border border-slate-200 cursor-pointer text-sm"
+                  >
+                    Ver Menos Partidas
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Winners Section Config */}

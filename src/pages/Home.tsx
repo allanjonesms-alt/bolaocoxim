@@ -7,10 +7,9 @@ import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, 
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
+import { LEADERBOARD_PRIZE_MULTIPLIER } from '../utils/constants';
 
 // Teste de alteração para verificação de commit no GitHub
-// Multiplicador do prêmio estimado da Classificação Geral
-const LEADERBOARD_PRIZE_MULTIPLIER = 5;
 
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);

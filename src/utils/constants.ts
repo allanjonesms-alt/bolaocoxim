@@ -1,0 +1,1 @@
+export const LEADERBOARD_PRIZE_MULTIPLIER = 5;

@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firest
 import { db } from '../lib/firebase';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
+import { LEADERBOARD_PRIZE_MULTIPLIER } from '../utils/constants';
 
 // Users point aggregations
 interface LeaderboardRow {
@@ -104,15 +105,15 @@ export default function Leaderboard() {
               <div className="flex flex-col gap-1.5 items-center">
                 <span className="text-yellow-400 text-lg font-black flex items-center gap-2">
                   <span className="text-[10px] bg-yellow-500/20 text-yellow-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">1º</span>
-                  R$ {(prizePool * 6 * 0.7).toFixed(2)}
+                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}
                 </span>
                 <span className="text-slate-300 text-base font-bold flex items-center gap-2">
                   <span className="text-[10px] bg-slate-400/20 text-slate-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">2º</span>
-                  R$ {(prizePool * 6 * 0.2).toFixed(2)}
+                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}
                 </span>
                 <span className="text-orange-400 text-sm font-bold flex items-center gap-2">
                   <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">3º</span>
-                  R$ {(prizePool * 6 * 0.1).toFixed(2)}
+                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}
                 </span>
               </div>
             </div>
