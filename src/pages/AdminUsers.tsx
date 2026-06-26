@@ -498,21 +498,37 @@ export default function AdminUsers() {
                         let pointsClass = 'text-slate-500 bg-slate-100 border-slate-200';
                         if (match.status === 'finished' && bet.status === 'confirmed') {
                           const pts = bet.points ?? 0;
-                          if (pts === 15 || pts === 5) {
-                            pointsLabel = `Exato (+${pts})`;
-                            pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                          } else if (pts === 9 || (pts === 3 && match.isPromotional)) {
-                            pointsLabel = `Vencedor + 1 Placar (+${pts})`;
-                            pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
-                          } else if (pts === 6 || pts === 2) {
-                            pointsLabel = `1 Placar (+${pts})`;
-                            pointsClass = 'text-indigo-700 bg-indigo-50 border-indigo-200';
-                          } else if ((pts === 3 && !match.isPromotional) || pts === 1) {
-                            pointsLabel = `Vencedor (+${pts})`;
-                            pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
-                          } else {
+                          if (pts === 0) {
                             pointsLabel = 'Errou (0)';
                             pointsClass = 'text-red-700 bg-red-50 border-red-200';
+                          } else {
+                            const p1 = bet.predicted1;
+                            const p2 = bet.predicted2;
+                            const m1 = match.result1!;
+                            const m2 = match.result2!;
+                            const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
+                            const matchOutcome = m1 > m2 ? 1 : (m1 < m2 ? 2 : 0);
+                            
+                            const exact = (p1 === m1 && p2 === m2);
+                            const rightOutcome = (betOutcome === matchOutcome);
+                            const oneScore = ((p1 === m1 || p2 === m2) && !exact);
+                            
+                            if (exact) {
+                                pointsLabel = `Exato (+${pts})`;
+                                pointsClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+                            } else if (rightOutcome && oneScore) {
+                                pointsLabel = `Vencedor + 1 Placar (+${pts})`;
+                                pointsClass = 'text-blue-700 bg-blue-50 border-blue-200';
+                            } else if (oneScore) {
+                                pointsLabel = `1 Placar (+${pts})`;
+                                pointsClass = 'text-indigo-700 bg-indigo-50 border-indigo-200';
+                            } else if (rightOutcome) {
+                                pointsLabel = `Vencedor (+${pts})`;
+                                pointsClass = 'text-amber-700 bg-amber-50 border-amber-200';
+                            } else {
+                                pointsLabel = `Pontuou (+${pts})`;
+                                pointsClass = 'text-slate-700 bg-slate-100 border-slate-200';
+                            }
                           }
                         }
 

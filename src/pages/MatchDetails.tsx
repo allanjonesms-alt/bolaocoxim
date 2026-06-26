@@ -148,6 +148,8 @@ export default function MatchDetails() {
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
         const isPromotional = !!match.isPromotional;
+        const phaseMultiplier = (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1;
+        
         betsDocs.forEach(b => {
           const p1 = b.data().predicted1;
           const p2 = b.data().predicted2;
@@ -159,13 +161,13 @@ export default function MatchDetails() {
           const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
 
           if (matchRealOutcome === betOutcome) {
-            points += isPromotional ? 1 : 3;
+            points += (isPromotional ? 1 : 3) * phaseMultiplier;
           }
           if (p1 === live1) {
-            points += isPromotional ? 2 : 6;
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
           }
           if (p2 === live2) {
-            points += isPromotional ? 2 : 6;
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
           }
 
           if (p1 === live1 && p2 === live2) {
@@ -299,7 +301,10 @@ export default function MatchDetails() {
       // Check for existing pending bet
       const pendingBets = bets.filter(b => b.userId === user.uid && b.status === 'pending');
       
-      const betAmount = match.isPromotional ? 1 : 5;
+      let betAmount = match.isPromotional ? 1 : 5;
+      if (match.isPromotional && (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL')) {
+        betAmount = 2;
+      }
       const hasBalance = profile.balance >= betAmount;
       if (!hasBalance && pendingBets.length > 0) {
         setBetError('Você já possui uma aposta pendente por falta de saldo neste jogo. Adicione saldo para confirmar.');
@@ -339,7 +344,8 @@ export default function MatchDetails() {
           // Update poolTotal in match
           // If promotional, 50% goes to general pool, but since it doesn't give prizes we can just add to poolTotal to track total money moved or ignore. We'll add it.
           // Wait, actually, let's keep track of poolTotal = same thing.
-          transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
+          const poolAddition = match.isPromotional ? betAmount * 0.5 : betAmount;
+          transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + poolAddition });
         }
         
         // Add bet

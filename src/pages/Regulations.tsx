@@ -221,7 +221,7 @@ export default function Regulations() {
                 </div>
 
                 <div className="border border-indigo-100 bg-indigo-50/50 rounded-2xl p-4">
-                  <h3 className="font-bold text-indigo-800 mb-3">Jogos Promocionais (R$ 1,00)</h3>
+                  <h3 className="font-bold text-indigo-800 mb-3">Jogos Promocionais (R$ 1,00*)</h3>
                   <ul className="space-y-2">
                     <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+1 pt</span></li>
                     <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
@@ -229,6 +229,13 @@ export default function Regulations() {
                   </ul>
                   <div className="mt-4 text-xs text-center font-bold text-indigo-900 bg-indigo-200 py-2 rounded-xl">Acerto do Placar Exato: 5 pontos no total</div>
                 </div>
+              </div>
+
+              <div className="mt-4 border-l-4 border-fuchsia-500 pl-3 py-2 bg-fuchsia-50/50 rounded-r-lg">
+                <p className="text-sm text-fuchsia-900 leading-relaxed font-medium">
+                  <strong>⚠️ Atenção para as fases finais:</strong> Nas partidas classificadas como <strong>2ª FASE</strong> e <strong>OITAVAS DE FINAL</strong>, as pontuações adquiridas (tanto em jogos principais quanto promocionais) são <strong>DOBRADAS</strong>! 
+                  Além disso, nessas fases, o custo do jogo promocional passa a ser <strong>R$ 2,00</strong>. O prêmio acumulado continuará recebendo o mesmo percentual de 50% (R$ 1,00) de contribuição nessas apostas promocionais.
+                </p>
               </div>
             </div>
           </div>

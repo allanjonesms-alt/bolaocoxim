@@ -458,7 +458,9 @@ export default function AdminPanel() {
         transaction.update(betRef, { status: 'confirmed', paid: finalPaid });
 
         // Update match's poolTotal
-        transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + betAmount });
+        const matchData = matchDoc.data();
+        const poolAddition = matchData.isPromotional ? betAmount * 0.5 : betAmount;
+        transaction.update(matchRef, { poolTotal: matchData.poolTotal + poolAddition });
       });
 
       showNotification('Aposta aprovada com sucesso!');
@@ -541,6 +543,8 @@ export default function AdminPanel() {
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
         const isPromotional = !!match.isPromotional;
+        const phaseMultiplier = (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1;
+        
         betsDocs.forEach(b => {
           const p1 = b.data().predicted1;
           const p2 = b.data().predicted2;
@@ -552,13 +556,13 @@ export default function AdminPanel() {
           const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
 
           if (matchRealOutcome === betOutcome) {
-            points += isPromotional ? 1 : 3;
+            points += (isPromotional ? 1 : 3) * phaseMultiplier;
           }
           if (p1 === res1) {
-            points += isPromotional ? 2 : 6;
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
           }
           if (p2 === res2) {
-            points += isPromotional ? 2 : 6;
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
           }
 
           if (p1 === res1 && p2 === res2) {

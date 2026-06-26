@@ -9,6 +9,9 @@ import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 
 // Teste de alteração para verificação de commit no GitHub
+// Multiplicador do prêmio estimado da Classificação Geral
+const LEADERBOARD_PRIZE_MULTIPLIER = 5;
+
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -362,7 +365,7 @@ export default function Home() {
                   Prêmio Estimado*
                 </span>
                 <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1 flex items-baseline gap-2">
-                  R$ {(totalPrizePool * 6).toFixed(2)} <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                  R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER).toFixed(2)} <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
                 </h3>
                 <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -381,15 +384,15 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-2 relative z-10 pt-4 border-t border-emerald-100">
             <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-200/50 flex flex-col items-center justify-center text-center">
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">1º Lugar</span>
-              <span className="font-mono font-bold text-emerald-800 text-sm">R$ {(totalPrizePool * 6 * 0.7).toFixed(2)}</span>
+              <span className="font-mono font-bold text-emerald-800 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}</span>
             </div>
             <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200/50 flex flex-col items-center justify-center text-center">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">2º Lugar</span>
-              <span className="font-mono font-bold text-slate-700 text-sm">R$ {(totalPrizePool * 6 * 0.2).toFixed(2)}</span>
+              <span className="font-mono font-bold text-slate-700 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}</span>
             </div>
             <div className="bg-orange-50 rounded-xl p-2.5 border border-orange-200/50 flex flex-col items-center justify-center text-center">
               <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-0.5">3º Lugar</span>
-              <span className="font-mono font-bold text-orange-700 text-sm">R$ {(totalPrizePool * 6 * 0.1).toFixed(2)}</span>
+              <span className="font-mono font-bold text-orange-700 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}</span>
             </div>
           </div>
         </div>
