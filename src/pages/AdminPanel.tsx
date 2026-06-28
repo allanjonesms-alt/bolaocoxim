@@ -109,6 +109,7 @@ export default function AdminPanel() {
     }, 4000);
   };
 
+
   // Selected user and user details modal states
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedUserBets, setSelectedUserBets] = useState<Bet[]>([]);
@@ -689,6 +690,7 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column: Adicionar Partida */}
