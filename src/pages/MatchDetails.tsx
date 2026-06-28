@@ -346,10 +346,8 @@ export default function MatchDetails() {
           });
 
           // Update poolTotal in match
-          // If promotional, 50% goes to general pool, but since it doesn't give prizes we can just add to poolTotal to track total money moved or ignore. We'll add it.
-          // Wait, actually, let's keep track of poolTotal = same thing.
           const poolAddition = match.isPromotional ? betAmount * 0.5 : betAmount;
-          transaction.update(matchRef, { poolTotal: matchDoc.data().poolTotal + poolAddition });
+          transaction.update(matchRef, { poolTotal: (matchDoc.data().poolTotal || 0) + poolAddition });
         }
         
         // Add bet
