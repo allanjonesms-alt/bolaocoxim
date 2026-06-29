@@ -58,6 +58,7 @@ export default function AdminPanel() {
 
   // Custom alert/toast states
   const [pendingAction, setPendingAction] = useState<{ type: 'approve' | 'reject'; transaction: Transaction } | null>(null);
+  const [pixReceiptDate, setPixReceiptDate] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Global Notification
@@ -354,7 +355,7 @@ export default function AdminPanel() {
     }
   };
 
-  const executeApproveTransaction = async (t: Transaction) => {
+  const executeApproveTransaction = async (t: Transaction, pixDate?: string) => {
     try {
       await runTransaction(db, async (transaction) => {
         const userRef = doc(db, 'users', t.userId);
@@ -371,7 +372,12 @@ export default function AdminPanel() {
 
         const newBalance = userDoc.data().balance + diff;
         transaction.update(userRef, { balance: newBalance });
-        transaction.update(transRef, { status: 'confirmed' });
+        
+        const transUpdate: any = { status: 'confirmed' };
+        if (t.type === 'withdrawal' && pixDate) {
+          transUpdate.pixReceiptDate = pixDate;
+        }
+        transaction.update(transRef, transUpdate);
 
         if (t.type === 'deposit' && newBalance >= 5) {
           const pbets = await getDocs(query(collection(db, 'bets'), where('userId', '==', t.userId), where('status', '==', 'pending')));
@@ -1240,9 +1246,24 @@ export default function AdminPanel() {
                   </strong> o {t.type === 'deposit' ? 'depósito' : 'saque'} de <span className="font-mono text-slate-800 font-bold bg-slate-100 px-2 py-0.5 rounded">R$ {t.amount.toFixed(2)}</span> solicitado por <strong className="text-slate-800 font-bold">{u?.displayId ? `#${u.displayId} - ` : ''}{u?.name || 'Jogador'}</strong>?
                 </p>
                 {t.type === 'withdrawal' && (
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chave PIX do Usuário</span>
-                    <span className="font-mono text-sm text-slate-800 font-bold break-all select-all">{u?.pix_key || 'Não informada'}</span>
+                  <div className="space-y-3">
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chave PIX do Usuário</span>
+                      <span className="font-mono text-sm text-slate-800 font-bold break-all select-all">{u?.pix_key || 'Não informada'}</span>
+                    </div>
+                    {isApprove && (
+                      <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex flex-col gap-2">
+                        <label className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                          Data/Hora do PIX Realizado
+                        </label>
+                        <input 
+                          type="datetime-local" 
+                          value={pixReceiptDate}
+                          onChange={(e) => setPixReceiptDate(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500/35 outline-none text-slate-800 font-mono text-sm"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
                 {!isApprove && (
@@ -1255,22 +1276,28 @@ export default function AdminPanel() {
               {/* Footer */}
               <div className="p-6 border-t border-slate-250 flex justify-end gap-3 bg-slate-50">
                 <button 
-                  onClick={() => setPendingAction(null)} 
+                  onClick={() => {
+                    setPendingAction(null);
+                    setPixReceiptDate('');
+                  }} 
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-250 rounded-xl px-4 py-2.5 font-bold text-xs transition-colors cursor-pointer uppercase tracking-wider"
                 >
                   Cancelar
                 </button>
                 <button 
+                  disabled={isApprove && t.type === 'withdrawal' && !pixReceiptDate}
                   onClick={async () => {
                     const actionItem = pendingAction;
+                    const dateVal = pixReceiptDate;
                     setPendingAction(null);
+                    setPixReceiptDate('');
                     if (actionItem.type === 'approve') {
-                      await executeApproveTransaction(actionItem.transaction);
+                      await executeApproveTransaction(actionItem.transaction, dateVal);
                     } else {
                       await executeRejectTransaction(actionItem.transaction);
                     }
                   }} 
-                  className={`rounded-xl px-4 py-2.5 font-bold text-xs transition-colors cursor-pointer uppercase tracking-wider text-white shadow-sm ${
+                  className={`rounded-xl px-4 py-2.5 font-bold text-xs transition-colors cursor-pointer uppercase tracking-wider text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
                     isApprove ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'
                   }`}
                 >
