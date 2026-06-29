@@ -181,7 +181,7 @@ export default function Regulations() {
                 Os Jogos Promocionais são uma modalidade especial que <strong>não distribui prêmios em dinheiro</strong>, mas serve exclusivamente para somar pontos na <strong>Classificação Geral</strong>.
               </p>
               <p className="border-l-4 border-indigo-500 pl-3 py-1 bg-indigo-50/50 rounded-r-lg">
-                O custo para registrar um palpite nesta modalidade é de apenas <strong>R$ 1,00</strong> (ou R$ 2,00 a partir da 2ª Fase).
+                O custo para registrar um palpite nesta modalidade é de apenas <strong>R$ 2,00</strong>.
               </p>
               <p>
                 Cada usuário tem um limite máximo de <strong>2 apostas</strong> por partida em jogos promocionais. Metade dos valores arrecadados nessas partidas são adicionados ao caixa para a grande premiação da Classificação Geral!
@@ -190,7 +190,7 @@ export default function Regulations() {
           </div>
           <div className="border-t border-slate-100 mt-6 pt-4 flex items-center justify-between">
             <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">Pontuação na Liga</span>
-            <span className="text-xs font-bold text-indigo-700">R$ 1,00 ou R$ 2,00 por Palpite</span>
+            <span className="text-xs font-bold text-indigo-700">R$ 2,00 por Palpite</span>
           </div>
         </motion.div>
 
@@ -213,28 +213,27 @@ export default function Regulations() {
                 <div className="border border-emerald-100 bg-emerald-50/50 rounded-2xl p-4">
                   <h3 className="font-bold text-emerald-800 mb-3">Jogos Principais (R$ 5,00)</h3>
                   <ul className="space-y-2">
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+3 pts</span></li>
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+6 pts</span></li>
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+6 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+6 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+12 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-emerald-700 bg-emerald-100 px-2 rounded">+12 pts</span></li>
                   </ul>
-                  <div className="mt-4 text-xs text-center font-bold text-emerald-900 bg-emerald-200 py-2 rounded-xl">Acerto do Placar Exato: 15 pontos no total</div>
+                  <div className="mt-4 text-xs text-center font-bold text-emerald-900 bg-emerald-200 py-2 rounded-xl">Acerto do Placar Exato: 30 pontos no total</div>
                 </div>
 
                 <div className="border border-indigo-100 bg-indigo-50/50 rounded-2xl p-4">
-                  <h3 className="font-bold text-indigo-800 mb-3">Jogos Promocionais (R$ 1,00 ou R$ 2,00*)</h3>
+                  <h3 className="font-bold text-indigo-800 mb-3">Jogos Promocionais (R$ 2,00)</h3>
                   <ul className="space-y-2">
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+1 pt</span></li>
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
-                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar o Vencedor (ou Empate)</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+2 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Mandante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+4 pts</span></li>
+                    <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-100/50 shadow-sm"><span className="text-xs font-semibold">Acertar Gols da Equipe Visitante</span> <span className="font-bold text-indigo-700 bg-indigo-100 px-2 rounded">+4 pts</span></li>
                   </ul>
-                  <div className="mt-4 text-xs text-center font-bold text-indigo-900 bg-indigo-200 py-2 rounded-xl">Acerto do Placar Exato: 5 pontos no total</div>
+                  <div className="mt-4 text-xs text-center font-bold text-indigo-900 bg-indigo-200 py-2 rounded-xl">Acerto do Placar Exato: 10 pontos no total</div>
                 </div>
               </div>
 
               <div className="mt-4 border-l-4 border-fuchsia-500 pl-3 py-2 bg-fuchsia-50/50 rounded-r-lg">
                 <p className="text-sm text-fuchsia-900 leading-relaxed font-medium">
-                  <strong>⚠️ Atenção para as fases finais:</strong> Nas partidas classificadas como <strong>2ª FASE</strong> e <strong>OITAVAS DE FINAL</strong>, as pontuações adquiridas (tanto em jogos principais quanto promocionais) são <strong>DOBRADAS</strong>! 
-                  Além disso, nessas fases, o custo do jogo promocional passa a ser <strong>R$ 2,00</strong>. O prêmio acumulado continuará recebendo o mesmo percentual de 50% de contribuição nessas apostas promocionais.
+                  <strong>⚠️ Pontuação em Dobro:</strong> Daqui até o final do campeonato, as pontuações de todos os jogos são <strong>DOBRADAS</strong>! Os valores acima já refletem essa pontuação atualizada. O custo do jogo promocional está fixado em <strong>R$ 2,00</strong>.
                 </p>
               </div>
             </div>

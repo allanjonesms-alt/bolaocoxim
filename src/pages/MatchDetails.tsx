@@ -148,7 +148,7 @@ export default function MatchDetails() {
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
         const isPromotional = !!match.isPromotional;
-        const phaseMultiplier = (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1;
+        const phaseMultiplier = (match.phase && match.phase !== 'GRUPOS') ? 2 : 1;
         
         betsDocs.forEach(b => {
           const p1 = b.data().predicted1;
