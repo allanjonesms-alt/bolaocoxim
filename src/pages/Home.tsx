@@ -325,7 +325,7 @@ export default function Home() {
         </div>
         <div className="text-slate-700 text-sm leading-relaxed relative z-10 font-medium">
           <strong className="text-amber-800 font-extrabold mr-1">Dica de Campeão:</strong> 
-          Prepare-se! Nos jogos da fase de <strong className="text-slate-900 font-bold">16 avos e oitavas de final</strong>, o valor do palpite será de <strong className="text-slate-900 font-bold">R$ 2,00</strong> e a pontuação para o ranking será em <strong className="text-slate-900 font-bold">dobro</strong>! Fique atento para disparar rumo ao topo da Classificação Geral!
+          Dê atenção especial aos jogos promocionais! As apostas promocionais de <strong className="text-slate-900 font-bold">R$ 2,00</strong> agora valem pontos em <strong className="text-slate-900 font-bold">dobro</strong> para o Ranking Geral. Acumule pontos em dobro e concorra ao grande prêmio acumulado que já ultrapassa a marca de <strong className="text-slate-900 font-bold text-emerald-700">R$ 400,00</strong>!
         </div>
       </div>
 
