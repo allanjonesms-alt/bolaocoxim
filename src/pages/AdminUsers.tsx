@@ -191,19 +191,15 @@ export default function AdminUsers() {
       
       let betAmount = 5;
       if (match.isPromotional) {
-        if (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') {
-          betAmount = 2;
-        } else {
-          betAmount = 1;
-        }
+        betAmount = 2;
       }
       
       const liveUser = users.find(u => u.id === userId);
       const actualBalance = liveUser?.balance || 0;
       const hasBalance = actualBalance >= betAmount;
       
-      if (!hasBalance && pendingBets.length > 0) {
-        showNotification('O usuário já possui uma aposta pendente por falta de saldo neste jogo.', 'error');
+      if (!hasBalance && pendingBets.length >= 2) {
+        showNotification('O usuário já atingiu o limite de 2 apostas pendentes por falta de saldo neste jogo.', 'error');
         setPlacingAdminBet(false);
         return;
       }

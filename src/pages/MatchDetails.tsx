@@ -303,15 +303,11 @@ export default function MatchDetails() {
       
       let betAmount = 5;
       if (match.isPromotional) {
-        if (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') {
-          betAmount = 2;
-        } else {
-          betAmount = 1;
-        }
+        betAmount = 2;
       }
       const hasBalance = profile.balance >= betAmount;
-      if (!hasBalance && pendingBets.length > 0) {
-        setBetError('Você já possui uma aposta pendente por falta de saldo neste jogo. Adicione saldo para confirmar.');
+      if (!hasBalance && pendingBets.length >= 2) {
+        setBetError('Você já atingiu o limite de 2 apostas pendentes por falta de saldo neste jogo. Adicione saldo para confirmar.');
         setPlacingBet(false);
         return;
       }
@@ -709,7 +705,7 @@ export default function MatchDetails() {
             <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center pb-4 border-b border-slate-100">
               Fazer Aposta 
               <span className={`${match.isPromotional ? 'text-indigo-600' : 'text-emerald-600'} ml-2 font-mono text-lg`}>
-                (R$ {match.isPromotional ? (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL' ? '2,00' : '1,00') : '5,00'})
+                (R$ {match.isPromotional ? '2,00' : '5,00'})
               </span>
             </h2>
             

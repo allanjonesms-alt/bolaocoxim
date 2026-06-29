@@ -577,7 +577,7 @@ export default function Home() {
                     🚨 DESTAQUE: ÚLTIMAS HORAS PARA PALPITAR!
                   </h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    Estes jogos promocionais se encerram em menos de 3 horas! Faça já seus palpites por apenas R$ 1,00 (ou R$ 2,00 a partir da 2ª Fase).
+                    Estes jogos promocionais se encerram em menos de 3 horas! Faça já seus palpites por apenas R$ 2,00.
                   </p>
                 </div>
               </div>
@@ -804,7 +804,7 @@ export default function Home() {
               <h2 className="text-xl font-display font-bold text-indigo-800 mb-2 flex items-center gap-2">
                 🌟 Jogos Promocionais
               </h2>
-              <p className="text-slate-500 text-sm mb-6 border-b border-indigo-100 pb-4">Estas partidas valem somente para pontuação na classificação geral. O palpite custa R$ 1,00 (ou R$ 2,00 a partir da 2ª Fase).</p>
+              <p className="text-slate-500 text-sm mb-6 border-b border-indigo-100 pb-4">Estas partidas valem somente para pontuação na classificação geral. O palpite custa R$ 2,00.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {normalPromotionalMatches.map(match => {

@@ -150,7 +150,7 @@ export default function Regulations() {
             <h2 className="text-lg font-display font-bold text-slate-800 uppercase tracking-wider">Aprovação e Saldo</h2>
             <div className="text-slate-600 text-sm leading-relaxed space-y-3">
               <p>
-                Quando você salva uma aposta, se houver saldo válido (R$ 5,00, R$ 1,00, ou R$ 2,00 dependendo do tipo da aposta), ela é <strong>aprovada automaticamente pelo sistema</strong>.
+                Quando você salva uma aposta, se houver saldo válido (R$ 5,00 ou R$ 2,00 dependendo do tipo da aposta), ela é <strong>aprovada automaticamente pelo sistema</strong>.
               </p>
               <p>
                 Apostas para as quais não haja saldo regular suficiente entrarão no sistema sob o rótulo de <strong>Aposta Pendente</strong>.
