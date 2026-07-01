@@ -122,7 +122,7 @@ export default function Home() {
       if (bet.status !== 'confirmed') return;
       const match = matches.find(m => m.id === bet.matchId);
       if (match?.isPromotional) {
-        calculatedPrizePool += (bet.amount || ((match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.50;
+        calculatedPrizePool += (bet.amount || 2) * 0.50;
       } else {
         calculatedPrizePool += (bet.amount || 5) * 0.02;
       }
@@ -643,7 +643,7 @@ export default function Home() {
                         <div className="text-sm flex flex-col items-end">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-red-600 font-mono text-base">
-                            R$ {(match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? '2.00' : '1.00'}
+                            R$ 2.00
                           </span>
                         </div>
                       </div>
@@ -883,7 +883,7 @@ export default function Home() {
                         <div className="text-sm flex flex-col">
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Custo Aposta</span>
                           <span className="font-bold text-indigo-700 font-mono text-base">
-                            R$ {(match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? '2.00' : '1.00'}
+                            R$ 2.00
                           </span>
                         </div>
                         

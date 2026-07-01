@@ -551,7 +551,7 @@ export default function AdminPanel() {
         const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
         
         const isPromotional = !!match.isPromotional;
-        const phaseMultiplier = (match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1;
+        const phaseMultiplier = (match.phase && match.phase !== 'GRUPOS') ? 2 : 1;
         
         betsDocs.forEach(b => {
           const p1 = b.data().predicted1;
@@ -583,7 +583,7 @@ export default function AdminPanel() {
           updateBets.push({ ref: doc(db, 'bets', b.id), points, isWinner });
         });
 
-        const prizePool = match.poolTotal * 0.9;
+        const prizePool = isPromotional ? 0 : match.poolTotal * 0.9;
         const prizePerWinner = winners.length > 0 ? prizePool / winners.length : 0;
 
         transaction.update(matchRef, { status: 'finished', result1: res1, result2: res2 });
@@ -596,7 +596,7 @@ export default function AdminPanel() {
            });
         }
         
-        if (winners.length > 0) {
+        if (!isPromotional && winners.length > 0) {
           const userPrizes: Record<string, number> = {};
           winners.forEach(w => {
             const uid = w.data().userId;
@@ -627,6 +627,71 @@ export default function AdminPanel() {
     }
   }
 
+  const handleRecalculatePromotionalMatch = async (match: Match) => {
+    const r1 = prompt(`Novo Resultado: Gols de ${match.team1}`, match.result1 !== undefined ? match.result1.toString() : '');
+    const r2 = prompt(`Novo Resultado: Gols de ${match.team2}`, match.result2 !== undefined ? match.result2.toString() : '');
+    if (r1 === null || r2 === null) return;
+    
+    const res1 = parseInt(r1, 10);
+    const res2 = parseInt(r2, 10);
+    if (isNaN(res1) || isNaN(res2)) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const matchRef = doc(db, 'matches', match.id);
+        
+        const betsQuery = query(collection(db, 'bets'), where('matchId', '==', match.id), where('status', '==', 'confirmed'));
+        const betsDocs = await getDocs(betsQuery);
+        
+        const updateBets: { ref: any, points: number, isWinner: boolean }[] = [];
+        
+        const isPromotional = !!match.isPromotional;
+        const phaseMultiplier = (match.phase && match.phase !== 'GRUPOS') ? 2 : 1;
+        
+        betsDocs.forEach(b => {
+          const p1 = b.data().predicted1;
+          const p2 = b.data().predicted2;
+          
+          let points = 0;
+          let isWinner = false;
+          
+          const matchRealOutcome = res1 > res2 ? 1 : (res1 < res2 ? 2 : 0);
+          const betOutcome = p1 > p2 ? 1 : (p1 < p2 ? 2 : 0);
+
+          if (matchRealOutcome === betOutcome) {
+            points += (isPromotional ? 1 : 3) * phaseMultiplier;
+          }
+          if (p1 === res1) {
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
+          }
+          if (p2 === res2) {
+            points += (isPromotional ? 2 : 6) * phaseMultiplier;
+          }
+
+          if (p1 === res1 && p2 === res2) {
+            isWinner = true;
+          }
+
+          updateBets.push({ ref: doc(db, 'bets', b.id), points, isWinner });
+        });
+
+        // Update match result
+        transaction.update(matchRef, { result1: res1, result2: res2 });
+        
+        // Update each bet's points and winner status
+        for (const up of updateBets) {
+           transaction.update(up.ref, { 
+             points: up.points, 
+             is_winner: up.isWinner
+           });
+        }
+      });
+      showNotification('Placar alterado e pontos dos palpites recalculados com sucesso!');
+    } catch(err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'matches');
+    }
+  }
+
   const handleDeleteMatch = (id: string) => {
     setMatchToDelete(id);
   }
@@ -650,13 +715,13 @@ export default function AdminPanel() {
   const totalApostado = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
     const m = matches.find(m => m.id === b.matchId);
     if (!m || m.status === 'finished') return sum;
-    return sum + (b.amount || (m.isPromotional ? ((m.phase === '2ª FASE' || m.phase === 'OITAVAS DE FINAL') ? 2 : 1) : 5));
+    return sum + (b.amount || (m.isPromotional ? 2 : 5));
   }, 0);
 
   const totalCaixa = bets.filter(b => b.status === "confirmed").reduce((sum, b) => {
     const m = matches.find(m => m.id === b.matchId);
     if (m?.isPromotional) {
-      return sum + (b.amount || ((m.phase === '2ª FASE' || m.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.5;
+      return sum + (b.amount || 2) * 0.5;
     }
     return sum + (b.amount || 5) * 0.1;
   }, 0);
@@ -1080,6 +1145,13 @@ export default function AdminPanel() {
                       <p className="text-xs font-mono text-emerald-800 font-bold mt-1.5 bg-emerald-50 inline-block px-2.5 py-1 rounded-lg border border-emerald-100">
                         Pool arrecadado: R$ {m.poolTotal.toFixed(2)}
                       </p>
+                      {m.status === 'finished' && (
+                        <div className="mt-1.5 flex">
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 font-mono">
+                            Resultado Final: {m.result1} x {m.result2}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button 
@@ -1113,6 +1185,14 @@ export default function AdminPanel() {
                         className="flex-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm"
                       >
                         Informar Resultado
+                      </button>
+                    )}
+                    {m.status === 'finished' && m.isPromotional && (
+                      <button 
+                        onClick={() => handleRecalculatePromotionalMatch(m)} 
+                        className="flex-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        <Edit className="w-3.5 h-3.5" /> Alterar Placar e Recalcular
                       </button>
                     )}
                   </div>

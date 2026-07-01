@@ -80,7 +80,7 @@ export default function Leaderboard() {
       if (bet.status !== 'confirmed') return;
       const match = matches.find(m => m.id === bet.matchId);
       if (match?.isPromotional) {
-        calculatedPrizePool += (bet.amount || ((match.phase === '2ª FASE' || match.phase === 'OITAVAS DE FINAL') ? 2 : 1)) * 0.50;
+        calculatedPrizePool += (bet.amount || 2) * 0.50;
       } else {
         calculatedPrizePool += (bet.amount || 5) * 0.02;
       }
