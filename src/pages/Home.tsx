@@ -254,7 +254,7 @@ export default function Home() {
     const matchDate = new Date(match.date).getTime();
     const isLive = match.status !== 'finished' && now >= matchDate;
     return !isLive;
-  });
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   let winnersData: { name: string; amount: string; id: string }[] = [];
   let winnersMatch: Match | undefined;

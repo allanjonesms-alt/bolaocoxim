@@ -103,7 +103,7 @@ export default function AllMatches() {
   }
 
   // Split into Official and Promotional
-  const officialMatches = matches.filter(match => !match.isPromotional);
+  const officialMatches = matches.filter(match => !match.isPromotional).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const promotionalMatches = matches.filter(match => match.isPromotional).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const MatchCard = ({ match }: { match: Match }) => {
