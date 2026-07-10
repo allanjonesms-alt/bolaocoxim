@@ -3,15 +3,16 @@ import { useSearchParams } from 'react-router-dom';
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Bet, Transaction, Match } from '../types';
+import { Bet, Transaction, Match, PixPremiadoGame } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X, Copy, Check } from 'lucide-react';
+import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X, Copy, Check, Sparkles } from 'lucide-react';
 
 export default function UserPanel() {
   const { user, profile } = useAuth();
   const [bets, setBets] = useState<(Bet & { match?: Match })[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [raffleGames, setRaffleGames] = useState<PixPremiadoGame[]>([]);
   
   const [showPix, setShowPix] = useState(false);
   const [depositAmount, setDepositAmount] = useState('50');
@@ -73,7 +74,13 @@ export default function UserPanel() {
       setMatches(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Match)));
     });
 
-    return () => { unsubBets(); unsubTrans(); unsubMatches(); };
+    const qRaffle = query(collection(db, 'pix_premiado_games'), where('userId', '==', user.uid));
+    const unsubRaffle = onSnapshot(qRaffle, (snapshot) => {
+      const raffleData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PixPremiadoGame));
+      setRaffleGames(raffleData);
+    });
+
+    return () => { unsubBets(); unsubTrans(); unsubMatches(); unsubRaffle(); };
   }, [user]);
 
   const handleDepositRequest = async () => {
@@ -411,6 +418,49 @@ export default function UserPanel() {
               );
             })}
           </div>
+        </div>
+
+        {/* Seção PIX PREMIADO */}
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none"></div>
+          
+          <h3 className="text-xl font-display font-bold text-slate-850 mb-2 flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-indigo-600" />
+            Seus Bilhetes - PIX PREMIADO
+          </h3>
+          <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
+            Seus bilhetes adquiridos para o sorteio especial do PIX PREMIADO. Cada jogo possui dezenas e quadras exclusivas, garantindo premiações únicas!
+          </p>
+
+          {raffleGames.length === 0 ? (
+            <p className="text-sm text-slate-400 font-medium text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+              Você não possui nenhum bilhete no sorteio ativo. Adquira com o administrador!
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {raffleGames.map(game => (
+                <div key={game.id} className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4 flex flex-col justify-between hover:border-indigo-200 transition-colors">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Bilhete Ativo</span>
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      {game.createdAt ? (game.createdAt.toDate ? game.createdAt.toDate().toLocaleDateString('pt-BR') : new Date(game.createdAt).toLocaleDateString('pt-BR')) : '-'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 justify-center mb-3">
+                    {game.numbers.map((num, i) => (
+                      <span key={i} className="w-8 h-8 rounded-full bg-white text-indigo-850 font-mono font-bold text-xs flex items-center justify-center border border-indigo-200 shadow-sm">
+                        {String(num).padStart(2, '0')}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-indigo-900/60 font-semibold border-t border-indigo-100/60 pt-2">
+                    <span>Custo do Bilhete:</span>
+                    <span className="font-mono font-bold text-indigo-700">R$ {game.price.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">

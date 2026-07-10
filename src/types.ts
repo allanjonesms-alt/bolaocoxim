@@ -60,3 +60,12 @@ export interface Transaction {
   timestamp: string;
   pixReceiptDate?: string; // For withdrawals (Saques)
 }
+
+export interface PixPremiadoGame {
+  id: string;
+  userId: string;
+  userName: string;
+  numbers: number[]; // Array of 6 numbers
+  price: number;
+  createdAt: any; // Firestore Timestamp
+}

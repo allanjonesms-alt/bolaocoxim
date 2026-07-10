@@ -1,0 +1,1024 @@
+import { useState, useEffect, FormEvent } from 'react';
+import { collection, onSnapshot, doc, runTransaction, serverTimestamp, getDocs, deleteDoc, writeBatch, query, where, limit, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { UserProfile, PixPremiadoGame } from '../types';
+import { ArrowLeft, Check, X, Sparkles, RefreshCw, Trophy, Trash2, ShieldCheck, Dices, Coins, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+// Mathematical rules supplied by the user
+function chave(quadra: number[]) {
+  return [...quadra].sort((a, b) => a - b).join("-");
+}
+
+function combinacoes4(jogo: number[]): string[] {
+  const resp: string[] = [];
+  if (jogo.length < 6) return resp;
+
+  for (let a = 0; a < 3; a++) {
+    for (let b = a + 1; b < 4; b++) {
+      for (let c = b + 1; c < 5; c++) {
+        for (let d = c + 1; d < 6; d++) {
+          resp.push(
+            chave([
+              jogo[a],
+              jogo[b],
+              jogo[c],
+              jogo[d]
+            ])
+          );
+        }
+      }
+    }
+  }
+  return resp;
+}
+
+function podeAdicionar(jogo: number[], usedQuads: Set<string>): boolean {
+  const quads = combinacoes4(jogo);
+  for (const q of quads) {
+    if (usedQuads.has(q)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function gerarJogo(): number[] {
+  const numeros: number[] = [];
+  while (numeros.length < 6) {
+    const n = Math.floor(Math.random() * 60) + 1;
+    if (!numeros.includes(n)) {
+      numeros.push(n);
+    }
+  }
+  return numeros.sort((a, b) => a - b);
+}
+
+export default function AdminPixPremiado() {
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [games, setGames] = useState<PixPremiadoGame[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Pool Metadata State
+  const [poolMetadata, setPoolMetadata] = useState<{
+    totalGames: number;
+    assignedGames: number;
+    isInitialized: boolean;
+  }>({ totalGames: 0, assignedGames: 0, isInitialized: false });
+
+  // Pool Generation Progress State
+  const [isGeneratingPool, setIsGeneratingPool] = useState(false);
+  const [poolGenStatus, setPoolGenStatus] = useState('');
+  const [poolGenProgress, setPoolGenProgress] = useState(0);
+
+  // Confirmation state modals
+  const [showPoolConfirm, setShowPoolConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Form State for buying tickets from pool
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [ticketCountToBuy, setTicketCountToBuy] = useState('1');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Drawing simulation state
+  const [drawnNumbers, setDrawnNumbers] = useState<string[]>(['', '', '', '', '', '']);
+  const [drawResults, setDrawResults] = useState<{
+    sena: PixPremiadoGame[];
+    quina: PixPremiadoGame[];
+    quadra: PixPremiadoGame[];
+    terno: PixPremiadoGame[];
+    hasChecked: boolean;
+  }>({ sena: [], quina: [], quadra: [], terno: [], hasChecked: false });
+
+  // Toast State
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  // Real-time sync for games and users
+  useEffect(() => {
+    const unsubGames = onSnapshot(collection(db, 'pix_premiado_games'), (snapshot) => {
+      const fetched = snapshot.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          userId: data.userId,
+          userName: data.userName,
+          numbers: data.numbers || [],
+          price: data.price || 10,
+          createdAt: data.createdAt
+        } as PixPremiadoGame;
+      });
+      // Sort newest first
+      fetched.sort((a, b) => {
+        const timeA = a.createdAt ? (a.createdAt.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime()) : 0;
+        const timeB = b.createdAt ? (b.createdAt.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime()) : 0;
+        return timeB - timeA;
+      });
+      setGames(fetched);
+      setLoading(false);
+    });
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const fetchedUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+      // Sort alphabetically
+      fetchedUsers.sort((a, b) => a.name.localeCompare(b.name));
+      setUsers(fetchedUsers);
+    });
+
+    const unsubMetadata = onSnapshot(doc(db, 'pix_premiado_metadata', 'pool'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setPoolMetadata({
+          totalGames: data.totalGames || 30000,
+          assignedGames: data.assignedGames || 0,
+          isInitialized: data.isInitialized !== false
+        });
+      } else {
+        // Fallback check if the collection actually has games
+        const checkPoolPresence = async () => {
+          try {
+            const q = query(collection(db, 'pix_premiado_pool'), limit(1));
+            const poolSnap = await getDocs(q);
+            if (!poolSnap.empty) {
+              setPoolMetadata({
+                totalGames: 30000,
+                assignedGames: 0,
+                isInitialized: true
+              });
+            } else {
+              setPoolMetadata({ totalGames: 0, assignedGames: 0, isInitialized: false });
+            }
+          } catch (err) {
+            setPoolMetadata({ totalGames: 0, assignedGames: 0, isInitialized: false });
+          }
+        };
+        checkPoolPresence();
+      }
+    });
+
+    return () => {
+      unsubGames();
+      unsubUsers();
+      unsubMetadata();
+    };
+  }, []);
+
+  // Compute used quads on the fly
+  const usedQuads = new Set<string>();
+  games.forEach(g => {
+    const quads = combinacoes4(g.numbers);
+    quads.forEach(q => usedQuads.add(q));
+  });
+
+  const effectiveAssignedGames = Math.max(poolMetadata.assignedGames || 0, games.length);
+
+  // NEW: Pre-generate a Pool of 30,000 games in the database using the exact algorithm requested
+  const handleGeneratePool = async () => {
+    setIsGeneratingPool(true);
+    setPoolGenStatus('Gerando 30.000 dezenas exclusivas em memória...');
+    setPoolGenProgress(0);
+
+    try {
+      const pool: number[][] = [];
+      const localUsedQuads = new Set<string>();
+      const localUsedGames = new Set<string>();
+
+      // Generate in chunks of 2,000 to keep UI responsive
+      const chunkSize = 2000;
+      const targetTotal = 30000;
+
+      const generateChunk = (): Promise<void> => {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            let attemptsThisChunk = 0;
+            const maxAttemptsThisChunk = 150000;
+            const targetLen = Math.min(targetTotal, pool.length + chunkSize);
+
+            while (pool.length < targetLen && attemptsThisChunk < maxAttemptsThisChunk) {
+              attemptsThisChunk++;
+              let candidate = gerarJogo();
+              let key = candidate.join("-");
+              let attempts = 0;
+              let added = false;
+
+              while (attempts < 50) {
+                if (podeAdicionar(candidate, localUsedQuads) && !localUsedGames.has(key)) {
+                  const quads = combinacoes4(candidate);
+                  quads.forEach(q => localUsedQuads.add(q));
+                  localUsedGames.add(key);
+                  pool.push(candidate);
+                  added = true;
+                  break;
+                }
+                candidate = gerarJogo();
+                key = candidate.join("-");
+                attempts++;
+              }
+
+              if (!added) {
+                while (localUsedGames.has(key)) {
+                  candidate = gerarJogo();
+                  key = candidate.join("-");
+                }
+                localUsedGames.add(key);
+                pool.push(candidate);
+              }
+            }
+
+            const progressPercent = Math.round((pool.length / targetTotal) * 40); // Memory represents 40% of visual progress
+            setPoolGenProgress(progressPercent);
+            setPoolGenStatus(`Gerando jogos na memória... ${pool.length.toLocaleString('pt-BR')} / 30.000`);
+            resolve();
+          }, 20);
+        });
+      };
+
+      while (pool.length < targetTotal) {
+        await generateChunk();
+      }
+
+      setPoolGenStatus('Limpando pool anterior do banco de dados...');
+      setPoolGenProgress(45);
+
+      // Delete existing pool in small batches to avoid out-of-memory errors
+      let hasMore = true;
+      let totalDeleted = 0;
+      while (hasMore) {
+        const q = query(collection(db, 'pix_premiado_pool'), limit(500));
+        const poolSnap = await getDocs(q);
+        if (poolSnap.empty) {
+          hasMore = false;
+        } else {
+          const batch = writeBatch(db);
+          poolSnap.docs.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          totalDeleted += poolSnap.size;
+          setPoolGenStatus(`Limpando pool anterior... ${totalDeleted.toLocaleString('pt-BR')} removidos`);
+        }
+      }
+
+      setPoolGenStatus('Salvando 30.000 jogos no banco de dados em lotes...');
+      
+      // Write new pool
+      const writeBatchSize = 500;
+      let savedCount = 0;
+
+      for (let i = 0; i < pool.length; i += writeBatchSize) {
+        const chunk = pool.slice(i, i + writeBatchSize);
+        const batch = writeBatch(db);
+
+        chunk.forEach((gameNumbers, idx) => {
+          const index = i + idx;
+          const poolDocRef = doc(collection(db, 'pix_premiado_pool'));
+          batch.set(poolDocRef, {
+            numbers: gameNumbers,
+            index: index,
+            assigned: false,
+            assignedUserId: null,
+            assignedUserName: null,
+            assignedAt: null,
+            price: 1.00
+          });
+        });
+
+        await batch.commit();
+        savedCount += chunk.length;
+
+        // Balance the remaining 60% progress
+        const dbProgress = 45 + Math.round((savedCount / targetTotal) * 55);
+        setPoolGenProgress(dbProgress);
+        setPoolGenStatus(`Salvando no banco... ${savedCount.toLocaleString('pt-BR')} / 30.000 salvos`);
+      }
+
+      // Update metadata
+      const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+      await setDoc(metaRef, {
+        totalGames: targetTotal,
+        assignedGames: 0,
+        isInitialized: true
+      });
+
+      showToast('Pool de 30.000 jogos válidos e exclusivos gerado com sucesso no banco de dados!', 'success');
+    } catch (error: any) {
+      showToast(error.message || 'Erro ao inicializar pool.', 'error');
+    } finally {
+      setIsGeneratingPool(false);
+      setPoolGenStatus('');
+      setPoolGenProgress(0);
+    }
+  };
+
+  // Helper to fetch random free pool games
+  const fetchRandomFreeGames = async (nToFetch: number): Promise<any[]> => {
+    const randomIndex = Math.floor(Math.random() * 30000);
+    
+    let q = query(
+      collection(db, 'pix_premiado_pool'),
+      where('assigned', '==', false),
+      where('index', '>=', randomIndex),
+      limit(nToFetch)
+    );
+    let snap = await getDocs(q);
+    let results = [...snap.docs];
+
+    if (results.length < nToFetch) {
+      const needed = nToFetch - results.length;
+      q = query(
+        collection(db, 'pix_premiado_pool'),
+        where('assigned', '==', false),
+        where('index', '<', randomIndex),
+        limit(needed)
+      );
+      snap = await getDocs(q);
+      results = [...results, ...snap.docs];
+    }
+    return results;
+  };
+
+  // NEW: Buy/Register ticket(s) randomly from the pre-generated pool
+  const handleBuyTicketsFromPool = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId) {
+      showToast('Por favor, selecione o apostador.', 'error');
+      return;
+    }
+
+    const count = parseInt(ticketCountToBuy, 10);
+    if (isNaN(count) || count <= 0 || count > 10000) {
+      showToast('Quantidade inválida (digite um valor de 1 a 10.000).', 'error');
+      return;
+    }
+
+    const selectedUser = users.find(u => u.id === selectedUserId);
+    if (!selectedUser) return;
+
+    const ticketPriceVal = 1.00; // Fixed price of R$ 1,00 as requested
+    const totalCost = count * ticketPriceVal;
+
+    if (selectedUser.balance < totalCost) {
+      showToast(`O apostador não possui saldo suficiente (Saldo: R$ ${selectedUser.balance.toFixed(2)} / Custo: R$ ${totalCost.toFixed(2)}).`, 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 1. Get random unassigned games from pool
+      const poolDocs = await fetchRandomFreeGames(count);
+      if (poolDocs.length < count) {
+        throw new Error(`Não há jogos livres suficientes no pool! Disponíveis: ${poolDocs.length}, Solicitados: ${count}. Crie um novo pool de 30.000 dezenas.`);
+      }
+
+      // 2. Write in chunks of 500 using Firestore transactions
+      const writeBatchSize = 500;
+      let savedCount = 0;
+
+      for (let i = 0; i < poolDocs.length; i += writeBatchSize) {
+        const chunk = poolDocs.slice(i, i + writeBatchSize);
+        const chunkCost = chunk.length * ticketPriceVal;
+
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, 'users', selectedUserId);
+          const userSnap = await transaction.get(userRef);
+
+          if (!userSnap.exists()) throw new Error('Usuário não encontrado.');
+          const currentBalance = userSnap.data().balance || 0;
+
+          if (currentBalance < chunkCost) {
+            throw new Error('Saldo insuficiente detectado na transação.');
+          }
+
+          // Deduct balance
+          transaction.update(userRef, { balance: currentBalance - chunkCost });
+
+          // Log transaction
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: selectedUserId,
+            type: 'manual_deduction',
+            amount: chunkCost,
+            status: 'confirmed',
+            timestamp: serverTimestamp(),
+            description: `Compra Lote PIX PREMIADO (${chunk.length} bilhetes do Pool)`
+          });
+
+          // Write public games and assign in pool
+          chunk.forEach(docSnap => {
+            const gameNumbers = docSnap.data().numbers as number[];
+            
+            // Mark assigned in pool doc
+            const poolDocRef = doc(db, 'pix_premiado_pool', docSnap.id);
+            transaction.update(poolDocRef, {
+              assigned: true,
+              assignedUserId: selectedUserId,
+              assignedUserName: selectedUser.name,
+              assignedAt: serverTimestamp()
+            });
+
+            // Write game
+            const gameRef = doc(collection(db, 'pix_premiado_games'));
+            transaction.set(gameRef, {
+              userId: selectedUserId,
+              userName: selectedUser.name,
+              numbers: gameNumbers,
+              price: ticketPriceVal,
+              createdAt: serverTimestamp()
+            });
+          });
+        });
+
+        savedCount += chunk.length;
+      }
+
+      // 3. Update metadata counts
+      const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+      await runTransaction(db, async (transaction) => {
+        const metaSnap = await transaction.get(metaRef);
+        const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+        transaction.set(metaRef, {
+          assignedGames: currentAssigned + savedCount
+        }, { merge: true });
+      });
+
+      setSelectedUserId('');
+      setTicketCountToBuy('1');
+      showToast(`${savedCount} bilhete(s) do pool comprado(s) e registrado(s) com sucesso por R$ 1,00 cada!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao comprar bilhetes.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+
+  // Reset all raffle tickets (new draw) returning them to the pool
+  const handleResetRaffle = async () => {
+    setLoading(true);
+    try {
+      const q = query(collection(db, 'pix_premiado_games'));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+
+      // Set all assigned games in pool to false
+      const qPoolAssigned = query(collection(db, 'pix_premiado_pool'), where('assigned', '==', true));
+      const poolAssignedSnap = await getDocs(qPoolAssigned);
+      if (poolAssignedSnap.size > 0) {
+        const batchPool = writeBatch(db);
+        poolAssignedSnap.docs.forEach(d => {
+          batchPool.update(d.ref, {
+            assigned: false,
+            assignedUserId: null,
+            assignedUserName: null,
+            assignedAt: null
+          });
+        });
+        await batchPool.commit();
+      }
+
+      // Reset metadata
+      const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+      await runTransaction(db, async (transaction) => {
+        transaction.update(metaRef, {
+          assignedGames: 0
+        });
+      });
+
+      setDrawResults({ sena: [], quina: [], quadra: [], terno: [], hasChecked: false });
+      setDrawnNumbers(['', '', '', '', '', '']);
+      showToast('Todo o sorteio foi resetado! Os bilhetes comprados voltaram a ficar livres no pool.', 'success');
+    } catch (err) {
+      showToast('Erro ao resetar sorteio.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Execute a Simulation draw and find winners
+  const handleCheckDraw = () => {
+    const parsedDraw = drawnNumbers.map(n => parseInt(n, 10));
+    if (parsedDraw.some(isNaN)) {
+      showToast('Por favor, preencha todos os 6 números do sorteio para simular.', 'error');
+      return;
+    }
+    if (parsedDraw.some(n => n < 1 || n > 60)) {
+      showToast('Os números sorteados devem estar entre 1 e 60.', 'error');
+      return;
+    }
+    const uniqueCheck = new Set(parsedDraw);
+    if (uniqueCheck.size !== 6) {
+      showToast('Os números sorteados devem ser distintos.', 'error');
+      return;
+    }
+
+    const sena: PixPremiadoGame[] = [];
+    const quina: PixPremiadoGame[] = [];
+    const quadra: PixPremiadoGame[] = [];
+    const terno: PixPremiadoGame[] = [];
+
+    games.forEach(g => {
+      let hits = 0;
+      g.numbers.forEach(num => {
+        if (parsedDraw.includes(num)) {
+          hits++;
+        }
+      });
+
+      if (hits === 6) sena.push(g);
+      else if (hits === 5) quina.push(g);
+      else if (hits === 4) quadra.push(g);
+      else if (hits === 3) terno.push(g);
+    });
+
+    setDrawResults({
+      sena,
+      quina,
+      quadra,
+      terno,
+      hasChecked: true
+    });
+    showToast('Apuração concluída! Confira os ganhadores abaixo.', 'success');
+  };
+
+  // Random draw numbers
+  const handleAutoDraw = () => {
+    const drawn = gerarJogo();
+    setDrawnNumbers(drawn.map(String));
+    showToast('Números sorteados aleatoriamente!', 'success');
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in relative pb-16">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] shadow-xl animate-fade-in">
+          <div className={`p-2 rounded-xl ${toast.type === 'success' ? 'bg-emerald-50' : toast.type === 'warning' ? 'bg-orange-55' : 'bg-red-50'}`}>
+            <div className={`flex items-start gap-4 p-4 border rounded-lg bg-white ${toast.type === 'success' ? 'border-emerald-200' : toast.type === 'warning' ? 'border-orange-200' : 'border-red-200'}`}>
+              <div className={`p-1.5 rounded-full ${toast.type === 'success' ? 'bg-emerald-100' : toast.type === 'warning' ? 'bg-orange-100' : 'bg-red-100'}`}>
+                {toast.type === 'success' ? <Check className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-red-600" />}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {toast.type === 'success' ? 'Sucesso' : toast.type === 'warning' ? 'Alerta' : 'Erro'}
+                </p>
+                <p className="text-sm font-bold text-slate-800 leading-tight">{toast.message}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link to="/admin" className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-3xl font-display font-bold text-slate-800 tracking-tight flex items-center gap-2">
+              <Sparkles className="w-8 h-8 text-indigo-600" />
+              PIX PREMIADO
+            </h1>
+            <p className="text-slate-500 text-sm font-medium">Gestão inteligente do sorteio de quadras exclusivas.</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setShowResetConfirm(true)}
+          className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
+        >
+          <RefreshCw className="w-4 h-4" /> Resetar Todo o Sorteio
+        </button>
+      </div>
+
+      {/* Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-4">
+          <div className="bg-indigo-50 p-4 rounded-2xl text-indigo-600">
+            <Trophy className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Total de Jogos</span>
+            <h3 className="text-2xl font-bold font-mono text-slate-800">{games.length} Bilhetes</h3>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-4">
+          <div className="bg-emerald-50 p-4 rounded-2xl text-emerald-600">
+            <Coins className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Acumulado do Caixa</span>
+            <h3 className="text-2xl font-bold font-mono text-emerald-700">
+              R$ {games.reduce((sum, g) => sum + g.price, 0).toFixed(2)}
+            </h3>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-4">
+          <div className="bg-amber-50 p-4 rounded-2xl text-amber-600">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Quadras Usadas</span>
+            <h3 className="text-2xl font-bold font-mono text-slate-800">{usedQuads.size} Quadras</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: Pool Control & Check Draw */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left: Pool Control (30.000 Dezenas) */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none"></div>
+          <div>
+            <h2 className="text-xl font-display font-bold text-slate-800 mb-2 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+              Gerenciador do Pool (30.000 Jogos)
+            </h2>
+            <p className="text-xs text-slate-400 font-medium mb-6 leading-relaxed">
+              Para garantir máxima lisura matemática e performance instantânea, o sistema pré-gera as 30.000 combinações exclusivas e únicas de quadras no banco de dados. Os bilhetes comprados serão sorteados aleatoriamente deste pool por apenas R$ 1,00 cada.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status do Pool</span>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${poolMetadata.isInitialized ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                  <span className="text-sm font-bold text-slate-700">
+                    {poolMetadata.isInitialized ? 'Inicializado e Ativo' : 'Não Inicializado'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Bilhetes Livres</span>
+                <span className="text-lg font-bold font-mono text-indigo-600">
+                  {poolMetadata.isInitialized 
+                    ? (poolMetadata.totalGames - effectiveAssignedGames).toLocaleString('pt-BR') 
+                    : '0'} / 30.000
+                </span>
+              </div>
+            </div>
+
+            {isGeneratingPool && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-6 animate-pulse">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                    {poolGenStatus}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-indigo-900">
+                    {poolGenProgress}%
+                  </span>
+                </div>
+                <div className="w-full bg-indigo-100 rounded-full h-3 overflow-hidden">
+                  <div 
+                    className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${poolGenProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-[10px] text-indigo-700/80 font-semibold mt-2">
+                  O algoritmo gera dezenas de milhares de jogos válidos e exclusivos na memória, depois os grava no Firestore de forma otimizada para transações.
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {}}
+              disabled={true}
+              className="w-full bg-slate-200 text-slate-400 font-bold rounded-xl py-3.5 transition-all cursor-not-allowed text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+              title="Esta função está temporariamente desativada"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Gerar / Reinicializar Pool Desabilitado
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Simulate Sorteio */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              Simulação de Apuração (Sorteio)
+            </h2>
+
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Inserir Números Sorteados</label>
+                  <button 
+                    type="button"
+                    onClick={handleAutoDraw}
+                    className="text-xs font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Dices className="w-3.5 h-3.5" /> Sortear Dezenas
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-6 gap-2">
+                  {drawnNumbers.map((num, idx) => (
+                    <input 
+                      key={idx}
+                      type="text"
+                      maxLength={2}
+                      value={num}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                        const copy = [...drawnNumbers];
+                        copy[idx] = cleaned;
+                        setDrawnNumbers(copy);
+                      }}
+                      placeholder={`S${idx+1}`}
+                      className="w-full text-center py-3 bg-amber-50/50 border border-amber-200 rounded-xl font-mono font-bold text-lg focus:ring-2 focus:ring-amber-500/25 outline-none text-amber-800"
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={handleCheckDraw}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl py-3.5 transition-all shadow-md shadow-amber-500/10 cursor-pointer text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+              >
+                <Trophy className="w-4 h-4" /> Apurar Ganhadores
+              </button>
+
+              {drawResults.hasChecked && (
+                <div className="mt-6 border-t border-slate-100 pt-6 space-y-4">
+                  <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-2">Resultado da Apuração:</h4>
+                  
+                  <div className="space-y-3">
+                    {/* Sena */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span className="text-xs font-extrabold text-amber-800">SENA (6 acertos)</span>
+                      </div>
+                      <span className="font-mono font-bold text-amber-900 text-sm">{drawResults.sena.length} bilhetes</span>
+                    </div>
+
+                    {/* Quina */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                        <span className="text-xs font-extrabold text-indigo-800">QUINA (5 acertos)</span>
+                      </div>
+                      <span className="font-mono font-bold text-indigo-900 text-sm">{drawResults.quina.length} bilhetes</span>
+                    </div>
+
+                    {/* Quadra */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span className="text-xs font-extrabold text-emerald-800">QUADRA (4 acertos)</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-900 text-sm">{drawResults.quadra.length} bilhetes</span>
+                    </div>
+
+                    {/* Terno */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                        <span className="text-xs font-extrabold text-slate-700">TERNO (3 acertos)</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-800 text-sm">{drawResults.terno.length} bilhetes</span>
+                    </div>
+                  </div>
+
+                  {/* Winner Lists details if any */}
+                  {[...drawResults.sena, ...drawResults.quina, ...drawResults.quadra].length > 0 ? (
+                    <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-200 max-h-[180px] overflow-y-auto space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-450">Lista de Ganhadores:</p>
+                      {drawResults.sena.map(g => (
+                        <div key={g.id} className="text-xs text-amber-800 font-bold">
+                          ★ {g.userName} - SENA: [{g.numbers.join(', ')}]
+                        </div>
+                      ))}
+                      {drawResults.quina.map(g => (
+                        <div key={g.id} className="text-xs text-indigo-800 font-semibold">
+                          ✦ {g.userName} - QUINA: [{g.numbers.join(', ')}]
+                        </div>
+                      ))}
+                      {drawResults.quadra.map(g => (
+                        <div key={g.id} className="text-xs text-emerald-800 font-semibold">
+                          ✔ {g.userName} - QUADRA: [{g.numbers.join(', ')}]
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 font-medium text-center py-2">Nenhum bilhete premiado de Quadra, Quina ou Sena nesta simulação.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO: COMPRAR / REGISTRAR BILHETES DO POOL */}
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[50px] pointer-events-none"></div>
+        
+        <h2 className="text-xl font-display font-bold text-slate-800 mb-2 flex items-center gap-2">
+          <Coins className="w-6 h-6 text-emerald-600" />
+          Venda de Bilhetes do Pool (Preço Fixo: R$ 1,00)
+        </h2>
+        <p className="text-xs text-slate-500 mb-6 font-medium max-w-2xl leading-relaxed">
+          Selecione o apostador e digite a quantidade de bilhetes para sortear e registrar a partir do pool de dezenas exclusivas. O custo de R$ 1,00 por bilhete será debitado do saldo do usuário instantaneamente.
+        </p>
+
+        <form onSubmit={handleBuyTicketsFromPool} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end mb-6">
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Dono do(s) Bilhete(s)</label>
+            <select 
+              value={selectedUserId} 
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold disabled:opacity-50"
+            >
+              <option value="">Selecione o apostador...</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.name} (Saldo: R$ {u.balance?.toFixed(2) || '0.00'})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Quantidade de Bilhetes</label>
+            <div className="relative">
+              <input 
+                type="number"
+                min="1"
+                max="10000"
+                value={ticketCountToBuy}
+                onChange={(e) => setTicketCountToBuy(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/25 text-slate-800 font-mono font-bold text-sm disabled:opacity-50"
+                placeholder="1"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                {['1', '10', '50', '100', '1000'].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setTicketCountToBuy(val)}
+                    disabled={isSubmitting}
+                    className="text-[9px] font-extrabold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md border border-indigo-200 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {val}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmitting || !poolMetadata.isInitialized}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-3.5 transition-all shadow-md shadow-emerald-600/15 cursor-pointer disabled:opacity-50 text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? 'Processando Compra...' : 'Comprar e Registrar do Pool'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* List of Registered Tickets */}
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+        <h2 className="text-xl font-display font-bold text-slate-800 mb-6 uppercase tracking-wider flex items-center justify-between">
+          <span>Bilhetes Registrados ({games.length})</span>
+        </h2>
+
+        {games.length === 0 ? (
+          <div className="text-center py-16 text-slate-400 font-medium">
+            Nenhum bilhete registrado para este sorteio ainda.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Apostador</th>
+                  <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Dezenas</th>
+                  <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Valor Pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                {games.map(g => (
+                  <tr key={g.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
+                    <td className="py-4">
+                      <p className="font-bold text-slate-800 text-sm leading-tight">{g.userName}</p>
+                      <p className="text-[10px] font-semibold text-slate-400 mt-1">
+                        {g.createdAt ? (g.createdAt.toDate ? g.createdAt.toDate().toLocaleString('pt-BR') : new Date(g.createdAt).toLocaleString('pt-BR')) : '-'}
+                      </p>
+                    </td>
+                    <td className="py-4">
+                      <div className="flex justify-center gap-1.5">
+                        {g.numbers.map((n, i) => (
+                          <span 
+                            key={i} 
+                            className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center border border-slate-200"
+                          >
+                            {String(n).padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 font-mono text-xs font-bold text-emerald-700">
+                      R$ {g.price.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Custom Confirmation Modals to avoid window.confirm issues in Iframe */}
+      {showPoolConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4">
+                <RefreshCw className="w-6 h-6 animate-spin" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Gerar Pool de 30.000 Jogos?</h3>
+              <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                <strong className="text-red-600">ATENÇÃO:</strong> Isso limpará o pool existente e gerará 30.000 novos jogos válidos e exclusivos no banco de dados. 
+                Este processo leva cerca de 1 a 2 minutos devido às escritas em lotes no Firestore.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPoolConfirm(false)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPoolConfirm(false);
+                  handleGeneratePool();
+                }}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors shadow-lg shadow-indigo-600/15 cursor-pointer"
+              >
+                Confirmar e Gerar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Resetar Todo o Sorteio?</h3>
+              <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                <strong className="text-red-600">ATENÇÃO:</strong> Isso excluirá TODOS os bilhetes do sorteio atual e os devolverá ao pool como disponíveis! Tem certeza disso?
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  handleResetRaffle();
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors shadow-lg shadow-red-600/15 cursor-pointer"
+              >
+                Confirmar Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

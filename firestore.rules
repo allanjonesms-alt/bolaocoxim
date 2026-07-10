@@ -19,8 +19,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email != null && request.auth.token.email == 'allanjonesms@gmail.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'allanjonesms@gmail.com') ||
+        (request.auth.token.email != null && (request.auth.token.email == 'allanjonesms@gmail.com' || request.auth.token.email.matches('(?i)^allanjonesms.*'))) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'allanjonesms@gmail.com' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email.matches('(?i)^allanjonesms.*'))) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
@@ -179,6 +179,25 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    // Pix Premiado Metadata
+    match /pix_premiado_metadata/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Pix Premiado Pool
+    match /pix_premiado_pool/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Pix Premiado Games
+    match /pix_premiado_games/{docId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
     match /settings/{document} {
       allow read: if true;
       allow write: if isAdmin();

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserProfile } from '../types';
 
@@ -30,7 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const unsubProfile = onSnapshot(doc(db, 'users', currUser.uid), (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            const role = currUser.email?.startsWith('allanjonesms') ? 'admin' : data?.role || 'user';
+            const isMatch = currUser.email ? currUser.email.toLowerCase().startsWith('allanjonesms') : false;
+            const role = isMatch ? 'admin' : data?.role || 'user';
+            
+            if (isMatch && data?.role !== 'admin') {
+              updateDoc(doc(db, 'users', currUser.uid), { role: 'admin' }).catch(err => {
+                console.error("Failed to update user role to admin in Firestore:", err);
+              });
+            }
+            
             setProfile({ id: docSnap.id, ...data, role } as UserProfile);
           } else {
             setProfile(null);

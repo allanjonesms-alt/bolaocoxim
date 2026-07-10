@@ -317,7 +317,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Dica de Ouro de Jogos Promocionais */}
+      {/* Dica de Ouro de Jogos Promocionais
       <div id="promotional-games-tip" className="bg-gradient-to-r from-yellow-500/10 via-amber-500/5 to-white border border-amber-300/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-400/5 rounded-full blur-xl pointer-events-none"></div>
         <div className="bg-amber-100 border border-amber-300 p-2 rounded-xl shrink-0">
@@ -328,6 +328,7 @@ export default function Home() {
           Dê atenção especial aos jogos promocionais! As apostas promocionais de <strong className="text-slate-900 font-bold">R$ 2,00</strong> agora valem pontos em <strong className="text-slate-900 font-bold">dobro</strong> para o Ranking Geral. Acumule pontos em dobro e concorra ao grande prêmio acumulado que já ultrapassa a marca de <strong className="text-slate-900 font-bold text-emerald-700">R$ 400,00</strong>!
         </div>
       </div>
+      */}
 
       {/* Seção de Classificação Geral Premium */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

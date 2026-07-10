@@ -122,6 +122,13 @@ export default function AdminPanel() {
   const [editUserPhone, setEditUserPhone] = useState('');
   const [savingUserData, setSavingUserData] = useState(false);
 
+  // Admin manual bet globally states
+  const [adminBetUserId, setAdminBetUserId] = useState('');
+  const [adminBetMatchId, setAdminBetMatchId] = useState('');
+  const [adminBetP1, setAdminBetP1] = useState('');
+  const [adminBetP2, setAdminBetP2] = useState('');
+  const [placingAdminBet, setPlacingAdminBet] = useState(false);
+
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const [deletingMatch, setDeletingMatch] = useState(false);
 
@@ -627,6 +634,114 @@ export default function AdminPanel() {
     }
   }
 
+  const handlePlaceAdminBet = async () => {
+    if (!adminBetUserId || !adminBetMatchId || adminBetP1 === '' || adminBetP2 === '' || placingAdminBet) return;
+    
+    const p1 = parseInt(adminBetP1, 10);
+    const p2 = parseInt(adminBetP2, 10);
+    if (isNaN(p1) || isNaN(p2) || p1 < 0 || p2 < 0) {
+      showNotification('Placar inválido.', 'error');
+      return;
+    }
+    
+    const match = matches.find(m => m.id === adminBetMatchId);
+    if (!match) return;
+
+    if (match.status !== 'open') {
+        showNotification('Apostas encerradas para esta partida.', 'error');
+        return;
+    }
+
+    const liveUser = users.find(u => u.id === adminBetUserId);
+    if (!liveUser) return;
+
+    setPlacingAdminBet(true);
+    
+    try {
+      const userBets = bets.filter(b => b.userId === adminBetUserId);
+      if (match.isPromotional) {
+        const userBetsForMatch = userBets.filter(b => b.matchId === match.id);
+        if (userBetsForMatch.length >= 2) {
+          showNotification('O usuário já atingiu o limite de 2 apostas para este jogo.', 'error');
+          setPlacingAdminBet(false);
+          return;
+        }
+      }
+
+      const pendingBets = userBets.filter(b => b.matchId === match.id && b.status === 'pending');
+      
+      let betAmount = 5;
+      if (match.isPromotional) {
+        betAmount = 2;
+      }
+      
+      const actualBalance = liveUser.balance || 0;
+      const hasBalance = actualBalance >= betAmount;
+      
+      if (!hasBalance && pendingBets.length >= 2) {
+        showNotification('O usuário já atingiu o limite de 2 apostas pendentes por falta de saldo neste jogo.', 'error');
+        setPlacingAdminBet(false);
+        return;
+      }
+
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', liveUser.id);
+        const matchRef = doc(db, 'matches', match.id);
+        
+        const userDoc = await transaction.get(userRef);
+        const matchDoc = await transaction.get(matchRef);
+        
+        if (!userDoc.exists() || !matchDoc.exists()) throw new Error('Documento não encontrado.');
+        
+        if (matchDoc.data().status !== 'open') {
+          throw new Error('Apostas encerradas para esta partida.');
+        }
+
+        const currentBalance = userDoc.data().balance || 0;
+        const canPay = currentBalance >= betAmount;
+
+        if (canPay) {
+          transaction.update(userRef, { balance: currentBalance - betAmount });
+          
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: liveUser.id,
+            type: 'bet',
+            amount: betAmount,
+            status: 'confirmed',
+            timestamp: serverTimestamp()
+          });
+
+          const poolAddition = match.isPromotional ? betAmount * 0.5 : betAmount;
+          transaction.update(matchRef, { poolTotal: (matchDoc.data().poolTotal || 0) + poolAddition });
+        }
+        
+        const betRef = doc(collection(db, 'bets'));
+        transaction.set(betRef, {
+          userId: liveUser.id,
+          userName: liveUser.name || 'Usuário',
+          matchId: match.id,
+          predicted1: p1,
+          predicted2: p2,
+          amount: betAmount,
+          status: canPay ? 'confirmed' : 'pending',
+          paid: canPay,
+          createdAt: serverTimestamp()
+        });
+      });
+      
+      setAdminBetUserId('');
+      setAdminBetMatchId('');
+      setAdminBetP1('');
+      setAdminBetP2('');
+      showNotification('Aposta registrada com sucesso!');
+    } catch (err: any) {
+      showNotification(err.message || 'Erro ao registrar aposta.', 'error');
+    } finally {
+      setPlacingAdminBet(false);
+    }
+  };
+
   const handleRecalculatePromotionalMatch = async (match: Match) => {
     const r1 = prompt(`Novo Resultado: Gols de ${match.team1}`, match.result1 !== undefined ? match.result1.toString() : '');
     const r2 = prompt(`Novo Resultado: Gols de ${match.team2}`, match.result2 !== undefined ? match.result2.toString() : '');
@@ -990,8 +1105,71 @@ export default function AdminPanel() {
         </div>
       </div>
 
+      {/* Fazer Aposta Manual */}
+      <div className="bg-white p-8 rounded-3xl shadow-md border border-slate-200">
+        <h2 className="font-display font-bold mb-4 text-slate-800 text-lg uppercase tracking-wider flex items-center gap-2">
+          <Check className="w-5 h-5 text-emerald-600" />
+          Fazer Aposta Manual Para Usuário
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="md:col-span-3">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Selecionar Usuário</label>
+            <select 
+              value={adminBetUserId} 
+              onChange={(e) => setAdminBetUserId(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 text-sm font-medium"
+            >
+              <option value="">Selecione um usuário...</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.name} (R$ {u.balance?.toFixed(2) || '0.00'})</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-4">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Jogo Disponível</label>
+            <select 
+              value={adminBetMatchId} 
+              onChange={(e) => setAdminBetMatchId(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/25 outline-none text-slate-800 text-sm font-medium"
+            >
+              <option value="">Selecione uma partida...</option>
+              {matches.filter(m => m.status === 'open').map(m => (
+                <option key={m.id} value={m.id}>{m.team1} x {m.team2} ({m.isPromotional ? 'Promocional' : 'Regular'})</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Casa</label>
+            <input 
+              type="number" min="0" 
+              value={adminBetP1} onChange={(e) => setAdminBetP1(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center focus:ring-2 focus:ring-emerald-500/25 outline-none font-bold text-slate-800 text-sm"
+              placeholder="0"
+            />
+          </div>
+          <div className="md:col-span-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Fora</label>
+            <input 
+              type="number" min="0" 
+              value={adminBetP2} onChange={(e) => setAdminBetP2(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center focus:ring-2 focus:ring-emerald-500/25 outline-none font-bold text-slate-800 text-sm"
+              placeholder="0"
+            />
+          </div>
+          <div className="md:col-span-3">
+            <button 
+              onClick={handlePlaceAdminBet}
+              disabled={placingAdminBet || !adminBetUserId || !adminBetMatchId || adminBetP1 === '' || adminBetP2 === ''}
+              className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 text-white bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
+            >
+              {placingAdminBet ? 'Processando...' : 'Apostar & Debitar'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Botões de Acesso Rápido a Novas Telas */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link 
           to="/admin/users" 
           className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
@@ -1031,6 +1209,19 @@ export default function AdminPanel() {
           <div className="text-center">
             <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Transações</h3>
             <p className="text-xs text-slate-500 font-medium">Histórico de entrada e saída de saldos do site.</p>
+          </div>
+        </Link>
+        <Link 
+          to="/admin/pix-premiado" 
+          className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
+          <div className="bg-indigo-50 p-4 rounded-full text-indigo-650 group-hover:scale-110 group-hover:bg-indigo-100 transition-all flex items-center justify-center relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.886L4.202 9l5.886 1.912L12 16.81l1.912-5.898 5.886-.088-5.886-1.912z"/></svg>
+          </div>
+          <div className="text-center">
+            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">PIX Premiado</h3>
+            <p className="text-xs text-slate-500 font-medium">Gestão de sorteio com restrição de quadra única.</p>
           </div>
         </Link>
       </div>

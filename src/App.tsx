@@ -15,6 +15,7 @@ import Leaderboard from './pages/Leaderboard';
 import ForgotPassword from './pages/ForgotPassword';
 import Regulations from './pages/Regulations';
 import AllMatches from './pages/AllMatches';
+import AdminPixPremiado from './pages/AdminPixPremiado';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
   const { user, profile, loading } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
             <Route path="admin/logs" element={<ProtectedRoute adminOnly><AdminLogs /></ProtectedRoute>} />
             <Route path="admin/transactions" element={<ProtectedRoute adminOnly><AdminTransactions /></ProtectedRoute>} />
+            <Route path="admin/pix-premiado" element={<ProtectedRoute adminOnly><AdminPixPremiado /></ProtectedRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>
