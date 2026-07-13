@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDocs, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
@@ -28,46 +28,49 @@ export default function Leaderboard() {
       setMatches(matchData);
     });
 
-    const betsQuery = query(collection(db, 'bets'));
-    const unsubscribeBets = onSnapshot(betsQuery, (snapshot) => {
-      const allBets: any[] = [];
-      const scores: Record<string, { userName: string, points: number }> = {};
-      
-      snapshot.docs.forEach(doc => {
-        const betData = doc.data() as Bet;
-        const bet = { ...betData, id: doc.id };
-        allBets.push(bet);
-        if (bet.status !== 'confirmed') return;
-
-        if (!scores[bet.userId]) {
-          scores[bet.userId] = { userName: bet.userName, points: 0 };
-        }
-        scores[bet.userId].points += (bet.points || 0);
-      });
-      
-      const rows = Object.keys(scores).map(userId => ({
-        userId,
-        userName: scores[userId].userName,
-        points: scores[userId].points
-      })).sort((a, b) => b.points - a.points);
-      
-      setBets(allBets);
-      setBoard(rows);
-      setError(null);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error loading leaderboard:", error);
-      setError(error.message || "Erro ao carregar a classificação.");
-      setLoading(false);
+    const fetchLeaderboardData = async () => {
       try {
-        handleFirestoreError(error, OperationType.LIST, 'bets');
-      } catch (e) {
-        console.error("Mapped Firestore Error:", e);
+        const betsQuery = query(collection(db, 'bets'), where('status', '==', 'confirmed'));
+        const snapshot = await getDocs(betsQuery);
+        const allBets: any[] = [];
+        const scores: Record<string, { userName: string, points: number }> = {};
+        
+        snapshot.docs.forEach(doc => {
+          const betData = doc.data() as Bet;
+          const bet = { ...betData, id: doc.id };
+          allBets.push(bet);
+
+          if (!scores[bet.userId]) {
+            scores[bet.userId] = { userName: bet.userName, points: 0 };
+          }
+          scores[bet.userId].points += (bet.points || 0);
+        });
+        
+        const rows = Object.keys(scores).map(userId => ({
+          userId,
+          userName: scores[userId].userName,
+          points: scores[userId].points
+        })).sort((a, b) => b.points - a.points);
+        
+        setBets(allBets);
+        setBoard(rows);
+        setError(null);
+        setLoading(false);
+      } catch (error: any) {
+        console.error("Error loading leaderboard:", error);
+        setError(error.message || "Erro ao carregar a classificação.");
+        setLoading(false);
+        try {
+          handleFirestoreError(error, OperationType.LIST, 'bets');
+        } catch (e) {
+          console.error("Mapped Firestore Error:", e);
+        }
       }
-    });
+    };
+
+    fetchLeaderboardData();
 
     return () => {
-      unsubscribeBets();
       unsubscribeMatches();
     };
   }, []);

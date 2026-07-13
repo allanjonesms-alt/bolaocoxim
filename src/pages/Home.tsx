@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, getDocs, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match, Bet } from '../types';
 import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle, Clock } from 'lucide-react';
@@ -15,12 +15,40 @@ import { motion, AnimatePresence } from 'motion/react';
 // Teste de alteração para verificação de commit no GitHub
 
 export default function Home() {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [matches, setMatches] = useState<Match[]>(() => {
+    try {
+      const cached = localStorage.getItem('home_matches_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('home_matches_cache');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
-  const [leader, setLeader] = useState<{ userName: string; points: number } | null>(null);
-  const [totalPrizePool, setTotalPrizePool] = useState<number>(0);
+  const [leader, setLeader] = useState<{ userName: string; points: number } | null>(() => {
+    try {
+      const cached = localStorage.getItem('home_leader_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [totalPrizePool, setTotalPrizePool] = useState<number>(() => {
+    try {
+      const cached = localStorage.getItem('home_prize_pool_cache');
+      return cached ? Number(cached) : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [printingPdfId, setPrintingPdfId] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [winnersSettings, setWinnersSettings] = useState<{ active: boolean; matchId: string } | null>(null);
@@ -57,43 +85,68 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    // We get all bets to calculate leaderboard summary on Home in real-time
-    const q = query(collection(db, 'bets'));
-    const unsubscribeBets = onSnapshot(q, (snapshot) => {
-      let calculatedPrizePool = 0;
-      const scores: Record<string, { userName: string, points: number }> = {};
-      const allBets: Bet[] = [];
-      
-      snapshot.docs.forEach(doc => {
-        const betData = doc.data() as Bet;
-        const bet = { ...betData, id: doc.id };
-        allBets.push(bet);
-        if (bet.status !== 'confirmed') return;
-        
-        if (!scores[bet.userId]) {
-          scores[bet.userId] = { userName: bet.userName, points: 0 };
-        }
-        scores[bet.userId].points += (bet.points || 0);
-      });
-      
-      const rows = Object.keys(scores).map(userId => ({
-        userId,
-        userName: scores[userId].userName,
-        points: scores[userId].points
-      })).sort((a, b) => b.points - a.points);
-      
-      setBets(allBets);
-      if (rows.length > 0) {
-        setLeader(rows[0]);
-      } else {
-        setLeader(null);
-      }
-    }, (error) => {
-      console.error("Error loading home leaderboard summary:", error);
-    });
+  const [winnersDataState, setWinnersDataState] = useState<{ name: string; amount: string; id: string }[]>(() => {
+    try {
+      const cached = localStorage.getItem('home_winners_data_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
 
-    return () => unsubscribeBets();
+  useEffect(() => {
+    // Fetch only confirmed bets asynchronously to keep the page load extremely fast
+    const fetchConfirmedBets = async () => {
+      try {
+        const lastFetch = localStorage.getItem('home_bets_last_fetch');
+        const cachedLeader = localStorage.getItem('home_leader_cache');
+        const cachedPrizePool = localStorage.getItem('home_prize_pool_cache');
+        const nowTime = Date.now();
+        
+        // If we have cached values and they are less than 5 minutes old, don't fetch!
+        if (cachedLeader && cachedPrizePool && lastFetch && (nowTime - Number(lastFetch) < 5 * 60 * 1000)) {
+          return;
+        }
+
+        const q = query(collection(db, 'bets'), where('status', '==', 'confirmed'));
+        const snapshot = await getDocs(q);
+        const scores: Record<string, { userName: string, points: number }> = {};
+        const allBets: Bet[] = [];
+        
+        snapshot.docs.forEach(doc => {
+          const betData = doc.data() as Bet;
+          const bet = { ...betData, id: doc.id };
+          allBets.push(bet);
+          
+          if (!scores[bet.userId]) {
+            scores[bet.userId] = { userName: bet.userName, points: 0 };
+          }
+          scores[bet.userId].points += (bet.points || 0);
+        });
+        
+        const rows = Object.keys(scores).map(userId => ({
+          userId,
+          userName: scores[userId].userName,
+          points: scores[userId].points
+        })).sort((a, b) => b.points - a.points);
+        
+        setBets(allBets);
+        if (rows.length > 0) {
+          const topLeader = rows[0];
+          setLeader(topLeader);
+          localStorage.setItem('home_leader_cache', JSON.stringify(topLeader));
+        } else {
+          setLeader(null);
+          localStorage.removeItem('home_leader_cache');
+        }
+        
+        localStorage.setItem('home_bets_last_fetch', nowTime.toString());
+      } catch (error) {
+        console.error("Error loading home leaderboard summary:", error);
+      }
+    };
+
+    fetchConfirmedBets();
   }, []);
 
   useEffect(() => {
@@ -101,6 +154,7 @@ export default function Home() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
       setMatches(matchData);
+      localStorage.setItem('home_matches_cache', JSON.stringify(matchData));
       setError(null);
       setLoading(false);
     }, (error) => {
@@ -128,6 +182,44 @@ export default function Home() {
 
     return () => { unsubscribe(); unsubSettings(); };
   }, []);
+
+  useEffect(() => {
+    if (!winnersSettings?.active || !winnersSettings?.matchId || matches.length === 0) return;
+    const match = matches.find(m => m.id === winnersSettings.matchId);
+    if (!match || match.status !== 'finished') return;
+
+    const fetchWinners = async () => {
+      try {
+        const q = query(
+          collection(db, 'bets'), 
+          where('matchId', '==', winnersSettings.matchId), 
+          where('status', '==', 'confirmed')
+        );
+        const snap = await getDocs(q);
+        const res1 = Number(match.result1);
+        const res2 = Number(match.result2);
+        const winningBets = snap.docs
+          .map(doc => doc.data() as Bet)
+          .filter(b => Number(b.predicted1) === res1 && Number(b.predicted2) === res2);
+        
+        const prizePool = match.poolTotal * 0.9;
+        const prizePerWinner = winningBets.length > 0 ? prizePool / winningBets.length : 0;
+        
+        const data = winningBets.map((b, i) => ({
+          id: b.id || (b.userId + i),
+          name: b.userName,
+          amount: prizePerWinner.toFixed(2)
+        }));
+        
+        setWinnersDataState(data);
+        localStorage.setItem('home_winners_data_cache', JSON.stringify(data));
+      } catch (e) {
+        console.error("Error fetching round winners:", e);
+      }
+    };
+
+    fetchWinners();
+  }, [winnersSettings, matches]);
 
   useEffect(() => {
     if (matches.length === 0 || bets.length === 0) return;
@@ -271,24 +363,11 @@ export default function Home() {
     return !isLive;
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  let winnersData: { name: string; amount: string; id: string }[] = [];
+  let winnersData: { name: string; amount: string; id: string }[] = winnersDataState;
   let winnersMatch: Match | undefined;
 
   if (winnersSettings?.active && winnersSettings.matchId) {
     winnersMatch = matches.find(m => m.id === winnersSettings.matchId);
-    if (winnersMatch && winnersMatch.status === 'finished') {
-      const res1 = Number(winnersMatch.result1);
-      const res2 = Number(winnersMatch.result2);
-      const matchBets = bets.filter(b => b.matchId === winnersMatch!.id && b.status === 'confirmed');
-      const winningBets = matchBets.filter(b => Number(b.predicted1) === res1 && Number(b.predicted2) === res2);
-      const prizePool = winnersMatch.poolTotal * 0.9;
-      const prizePerWinner = winningBets.length > 0 ? prizePool / winningBets.length : 0;
-      winnersData = winningBets.map(b => ({
-        id: b.id,
-        name: b.userName,
-        amount: prizePerWinner.toFixed(2)
-      }));
-    }
   }
 
   return (
@@ -721,6 +800,7 @@ export default function Home() {
                       alt="Painel Google Scoreboard Exemplo" 
                       className="max-w-full h-auto max-h-[85px] object-contain rounded"
                       referrerPolicy="no-referrer"
+                      loading="lazy"
                     />
                   </div>
                   <span className="text-[10px] text-slate-500 font-bold block leading-tight">
@@ -1060,6 +1140,7 @@ export default function Home() {
                   src={minutoCertoPosterImg} 
                   alt="Minuto Certo Bolão Coxim" 
                   referrerPolicy="no-referrer"
+                  loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-45 group-hover:opacity-20 transition-opacity" />
