@@ -305,7 +305,7 @@ export default function MatchDetails() {
       if (match.isPromotional) {
         betAmount = 2;
       }
-      const hasBalance = profile.balance >= betAmount;
+      const hasBalance = (profile.balance ?? 0) >= betAmount;
       if (!hasBalance && pendingBets.length >= 2) {
         setBetError('Você já atingiu o limite de 2 apostas pendentes por falta de saldo neste jogo. Adicione saldo para confirmar.');
         setPlacingBet(false);

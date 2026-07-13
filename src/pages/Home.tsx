@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Match, Bet } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle } from 'lucide-react';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle, Clock } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 import { LEADERBOARD_PRIZE_MULTIPLIER } from '../utils/constants';
+import googleScoreboardImg from '../assets/images/google_scoreboard_1783945113545.jpg';
 
 // Teste de alteração para verificação de commit no GitHub
 
@@ -333,20 +334,20 @@ export default function Home() {
       {/* Seção de Classificação Geral Premium */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card do Líder */}
-        <div className="bg-gradient-to-br from-amber-500/10 via-white to-white border border-yellow-500/30 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-400/10 transition-all"></div>
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="bg-yellow-100 border border-yellow-300 p-3.5 rounded-2xl">
-              <Crown className="h-7 w-7 text-yellow-600 animate-pulse" />
+        <div className="bg-gradient-to-br from-amber-500/10 via-white to-white border border-yellow-500/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-400/5 rounded-full blur-xl pointer-events-none group-hover:bg-yellow-400/10 transition-all"></div>
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="bg-yellow-100 border border-yellow-300 p-2.5 rounded-xl">
+              <Crown className="h-5 w-5 text-yellow-600 animate-pulse" />
             </div>
             <div>
-              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+              <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                 Líder da Classificação
               </span>
-              <h3 className="font-display font-black text-xl text-slate-800 mt-1 truncate max-w-[200px] sm:max-w-[250px]">
+              <h3 className="font-display font-black text-lg text-slate-800 mt-1 truncate max-w-[150px] sm:max-w-[200px]">
                 {leader ? leader.userName : 'Sem registro'}
               </h3>
-              <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1">
+              <p className="text-slate-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
                 <Trophy className="h-3 w-3 text-slate-400 shrink-0" />
                 {leader ? `${leader.points} pontos acumulados` : 'Faça palpites para pontuar'}
               </p>
@@ -354,54 +355,54 @@ export default function Home() {
           </div>
           <Link
             to="/leaderboard"
-            className="bg-slate-50 hover:bg-yellow-400 border border-slate-200/85 hover:border-yellow-400 hover:text-slate-950 p-2.5 rounded-xl transition-all shadow-sm"
+            className="bg-slate-50 hover:bg-yellow-400 border border-slate-200/85 hover:border-yellow-400 hover:text-slate-950 p-2 rounded-xl transition-all shadow-sm"
           >
-            <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
+            <ChevronRight className="h-4 w-4 text-slate-600 hover:text-slate-900" />
           </Link>
         </div>
 
         {/* Card do Prêmio Acumulado */}
-        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-400/10 transition-all"></div>
+        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-3 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-400/10 transition-all"></div>
           
           <div className="flex items-center justify-between relative z-10 w-full">
-            <div className="flex items-center gap-4">
-              <div className="bg-emerald-100 border border-emerald-300 p-3.5 rounded-2xl">
-                <Trophy className="h-7 w-7 text-emerald-600" />
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl">
+                <Trophy className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                <span className="text-[9px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
                   Prêmio Estimado*
                 </span>
-                <h3 className="font-mono font-black text-2xl text-emerald-700 mt-1 flex items-baseline gap-2">
-                  R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER).toFixed(2)} <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
+                <h3 className="font-mono font-black text-xl text-emerald-700 mt-1 flex items-baseline gap-1.5">
+                  R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER).toFixed(2)} <span className="text-[9px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
                 </h3>
-                <p className="text-slate-500 text-xs font-semibold mt-0.5 flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <p className="text-slate-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
                   Entrega em <strong className="text-slate-700">19/07 (Final da Copa)</strong>
                 </p>
               </div>
             </div>
             <Link
               to="/leaderboard"
-              className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2.5 rounded-xl transition-all shadow-sm shrink-0"
+              className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2 rounded-xl transition-all shadow-sm shrink-0"
             >
-              <ChevronRight className="h-5 w-5 text-slate-600 hover:text-slate-900" />
+              <ChevronRight className="h-4 w-4 text-slate-600 hover:text-slate-900" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 relative z-10 pt-4 border-t border-emerald-100">
-            <div className="bg-emerald-50 rounded-xl p-2.5 border border-emerald-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">1º Lugar</span>
-              <span className="font-mono font-bold text-emerald-800 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}</span>
+          <div className="grid grid-cols-3 gap-1.5 relative z-10 pt-3 border-t border-emerald-100">
+            <div className="bg-emerald-50 rounded-xl p-1.5 border border-emerald-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">1º Lugar</span>
+              <span className="font-mono font-bold text-emerald-800 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}</span>
             </div>
-            <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">2º Lugar</span>
-              <span className="font-mono font-bold text-slate-700 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}</span>
+            <div className="bg-slate-50 rounded-xl p-1.5 border border-slate-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5">2º Lugar</span>
+              <span className="font-mono font-bold text-slate-700 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}</span>
             </div>
-            <div className="bg-orange-50 rounded-xl p-2.5 border border-orange-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-0.5">3º Lugar</span>
-              <span className="font-mono font-bold text-orange-700 text-sm">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}</span>
+            <div className="bg-orange-50 rounded-xl p-1.5 border border-orange-200/50 flex flex-col items-center justify-center text-center">
+              <span className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-0.5">3º Lugar</span>
+              <span className="font-mono font-bold text-orange-700 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -654,6 +655,85 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Seção Destaque MINUTO CERTO */}
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-50/20 to-white border border-amber-300/80 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden text-left">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/15 rounded-full blur-[50px] pointer-events-none animate-pulse"></div>
+            
+            <div className="flex flex-col xl:flex-row items-stretch justify-between gap-8 relative z-10">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    Novidade Imperdível
+                  </span>
+                  <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs font-mono">
+                    Bilhete: R$ 2,00
+                  </span>
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs">
+                    Prêmio: R$ 100,00 Fixo
+                  </span>
+                </div>
+                
+                <h3 className="text-2xl sm:text-3xl font-display font-black text-amber-850 tracking-tight">
+                  MINUTO CERTO ⚽⏱️
+                </h3>
+
+                <div className="text-slate-600 text-sm leading-relaxed space-y-4">
+                  <p className="text-slate-800 text-base sm:text-lg font-bold leading-snug">
+                    Participe do <span className="text-amber-700 font-black">Minuto Certo</span> por apenas <span className="text-amber-700 font-black">R$ 2,00</span> por bilhete! Se o gol do jogo sair no seu minuto, você leva o prêmio de <span className="text-emerald-700 font-black">R$ 100,00 sozinho</span>!
+                  </p>
+                  
+                  <p className="text-slate-600 text-sm">
+                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. Garanta seus minutos preferidos para aumentar suas chances!
+                  </p>
+
+                  <p className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <AlertCircle className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <span>
+                      Usamos a <strong>transmissão oficial e o painel de busca do Google</strong> como referência de minutagem oficial do gol.
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Lado Direito: Exemplo de Imagem e Botão */}
+              <div className="flex flex-col justify-between items-center xl:w-[320px] shrink-0 bg-white/65 border border-slate-200 p-4 rounded-2xl gap-4">
+                <div className="w-full text-center space-y-2">
+                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Exemplo de Apuração (Google)</span>
+                  <div className="bg-slate-50 border border-slate-200/60 p-2 rounded-lg flex justify-center">
+                    <img 
+                      src={googleScoreboardImg} 
+                      alt="Painel Google Scoreboard Exemplo" 
+                      className="max-w-full h-auto max-h-[85px] object-contain rounded"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold block leading-tight">
+                    Schjelderup 36&apos; (Minuto 36) <br /> Bellingham 45+2&apos; (Minuto 47)
+                  </span>
+                </div>
+
+                <div className="w-full space-y-2">
+                  <Link
+                    to="/minuto-certo"
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-95 flex items-center gap-1.5 border border-amber-400 justify-center text-center w-full"
+                  >
+                    <span>Adquirir Meu Minuto</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+
+                  <Link
+                    to="/regulamento"
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 justify-center w-full"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Ver regulamento completo</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {officialMatches.length > 0 && (
             <div>

@@ -69,3 +69,38 @@ export interface PixPremiadoGame {
   price: number;
   createdAt: any; // Firestore Timestamp
 }
+
+export interface PixPremiadoDraw {
+  id: string;
+  date: string;
+  time: string;
+  type: 'MegaSena' | 'Loteria Federal';
+  status: 'active' | 'finished';
+  drawnNumbers: string[];
+  createdAt: any;
+}
+
+export interface MinutoCertoDraw {
+  id: string;
+  matchName: string;
+  date: string;
+  time: string;
+  status: 'active' | 'finished';
+  winningMinute: number | null; // 1 to 100
+  winnerId: string | null;
+  winnerName: string | null;
+  createdAt: any;
+  price: number;
+  prize: number;
+}
+
+export interface MinutoCertoTicket {
+  id: string;
+  drawId: string;
+  userId: string;
+  userName: string;
+  minuteValue: number; // 1 to 100
+  minuteLabel: string; // e.g. "45+2" or "89"
+  price: number;
+  createdAt: any;
+}

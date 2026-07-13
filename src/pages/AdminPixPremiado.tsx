@@ -1,8 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { collection, onSnapshot, doc, runTransaction, serverTimestamp, getDocs, deleteDoc, writeBatch, query, where, limit, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { UserProfile, PixPremiadoGame } from '../types';
-import { ArrowLeft, Check, X, Sparkles, RefreshCw, Trophy, Trash2, ShieldCheck, Dices, Coins, AlertCircle } from 'lucide-react';
+import { UserProfile, PixPremiadoGame, PixPremiadoDraw } from '../types';
+import { ArrowLeft, Check, X, Sparkles, RefreshCw, Trophy, Trash2, ShieldCheck, Dices, Coins, AlertCircle, CalendarDays, Plus, Edit2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Mathematical rules supplied by the user
@@ -90,6 +90,23 @@ export default function AdminPixPremiado() {
     hasChecked: boolean;
   }>({ sena: [], quina: [], quadra: [], terno: [], hasChecked: false });
 
+  
+  // Draws State
+  const [draws, setDraws] = useState<PixPremiadoDraw[]>([]);
+  const [showDrawForm, setShowDrawForm] = useState(false);
+  const [editingDrawId, setEditingDrawId] = useState<string | null>(null);
+  const [drawForm, setDrawForm] = useState<{
+    date: string;
+    time: string;
+    type: 'MegaSena' | 'Loteria Federal';
+    status: 'active' | 'finished';
+  }>({
+    date: '',
+    time: '',
+    type: 'MegaSena',
+    status: 'active'
+  });
+
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
@@ -129,6 +146,13 @@ export default function AdminPixPremiado() {
       setUsers(fetchedUsers);
     });
 
+    
+    const unsubDraws = onSnapshot(collection(db, 'pix_premiado_draws'), (snapshot) => {
+      const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PixPremiadoDraw));
+      fetched.sort((a, b) => new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime());
+      setDraws(fetched);
+    });
+
     const unsubMetadata = onSnapshot(doc(db, 'pix_premiado_metadata', 'pool'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -164,8 +188,51 @@ export default function AdminPixPremiado() {
       unsubGames();
       unsubUsers();
       unsubMetadata();
+      unsubDraws();
     };
   }, []);
+
+
+  const handleSaveDraw = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!drawForm.date || !drawForm.time) {
+      showToast('Preencha data e hora do sorteio.', 'error');
+      return;
+    }
+    
+    try {
+      if (editingDrawId) {
+        await setDoc(doc(db, 'pix_premiado_draws', editingDrawId), {
+          ...drawForm,
+        }, { merge: true });
+        showToast('Sorteio atualizado!', 'success');
+      } else {
+        const newRef = doc(collection(db, 'pix_premiado_draws'));
+        await setDoc(newRef, {
+          ...drawForm,
+          drawnNumbers: ['', '', '', '', '', ''],
+          createdAt: serverTimestamp()
+        });
+        showToast('Novo sorteio cadastrado!', 'success');
+      }
+      setShowDrawForm(false);
+      setEditingDrawId(null);
+      setDrawForm({ date: '', time: '', type: 'MegaSena', status: 'active' });
+    } catch (err) {
+      showToast('Erro ao salvar sorteio.', 'error');
+    }
+  };
+
+  const handleEditDraw = (draw: PixPremiadoDraw) => {
+    setDrawForm({
+      date: draw.date,
+      time: draw.time,
+      type: draw.type,
+      status: draw.status
+    });
+    setEditingDrawId(draw.id);
+    setShowDrawForm(true);
+  };
 
   // Compute used quads on the fly
   const usedQuads = new Set<string>();
@@ -502,10 +569,10 @@ export default function AdminPixPremiado() {
   };
 
   // Execute a Simulation draw and find winners
-  const handleCheckDraw = () => {
+  const handleCheckDraw = async () => {
     const parsedDraw = drawnNumbers.map(n => parseInt(n, 10));
     if (parsedDraw.some(isNaN)) {
-      showToast('Por favor, preencha todos os 6 números do sorteio para simular.', 'error');
+      showToast('Por favor, preencha todos os 6 números do sorteio.', 'error');
       return;
     }
     if (parsedDraw.some(n => n < 1 || n > 60)) {
@@ -544,7 +611,21 @@ export default function AdminPixPremiado() {
       terno,
       hasChecked: true
     });
-    showToast('Apuração concluída! Confira os ganhadores abaixo.', 'success');
+    
+    // Save to active draw if any exists
+    const activeDraw = draws.find(d => d.status === 'active');
+    if (activeDraw) {
+      try {
+        await setDoc(doc(db, 'pix_premiado_draws', activeDraw.id), {
+          drawnNumbers: drawnNumbers
+        }, { merge: true });
+        showToast('Apuração concluída e resultado salvo no sorteio ativo!', 'success');
+      } catch (err) {
+        showToast('Apuração concluída, mas erro ao salvar resultado no banco.', 'warning');
+      }
+    } else {
+      showToast('Apuração concluída! (Nenhum sorteio ativo para salvar o resultado).', 'success');
+    }
   };
 
   // Random draw numbers
@@ -597,6 +678,129 @@ export default function AdminPixPremiado() {
           <RefreshCw className="w-4 h-4" /> Resetar Todo o Sorteio
         </button>
       </div>
+
+      
+      {/* Gerenciamento de Sorteios */}
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-display font-bold text-slate-800 flex items-center gap-2">
+            <CalendarDays className="w-6 h-6 text-indigo-600" />
+            Cadastro de Sorteios
+          </h2>
+          <button
+            onClick={() => {
+              setDrawForm({ date: '', time: '', type: 'MegaSena', status: 'active' });
+              setEditingDrawId(null);
+              setShowDrawForm(!showDrawForm);
+            }}
+            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm"
+          >
+            {showDrawForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {showDrawForm ? 'Cancelar' : 'Novo Sorteio'}
+          </button>
+        </div>
+
+        {showDrawForm && (
+          <form onSubmit={handleSaveDraw} className="mb-8 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Data</label>
+                <input
+                  type="date"
+                  value={drawForm.date}
+                  onChange={e => setDrawForm({...drawForm, date: e.target.value})}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Horário</label>
+                <input
+                  type="time"
+                  value={drawForm.time}
+                  onChange={e => setDrawForm({...drawForm, time: e.target.value})}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Tipo</label>
+                <select
+                  value={drawForm.type}
+                  onChange={e => setDrawForm({...drawForm, type: e.target.value as any})}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold"
+                >
+                  <option value="MegaSena">Mega-Sena</option>
+                  <option value="Loteria Federal">Loteria Federal</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Status</label>
+                <select
+                  value={drawForm.status}
+                  onChange={e => setDrawForm({...drawForm, status: e.target.value as any})}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold"
+                >
+                  <option value="active">Ativo</option>
+                  <option value="finished">Finalizado</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md shadow-indigo-600/15 text-sm uppercase tracking-wider"
+              >
+                Salvar Sorteio
+              </button>
+            </div>
+          </form>
+        )}
+
+        {draws.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data / Hora</th>
+                  <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipo</th>
+                  <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                  <th className="py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {draws.map(draw => (
+                  <tr key={draw.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3">
+                      <span className="font-bold text-slate-800 text-sm">
+                        {draw.date.split('-').reverse().join('/')} às {draw.time}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="font-semibold text-slate-600 text-sm">{draw.type}</span>
+                    </td>
+                    <td className="py-3">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${draw.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                        {draw.status === 'active' ? 'ATIVO' : 'FINALIZADO'}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <button
+                        onClick={() => handleEditDraw(draw)}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                        title="Editar"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500 font-medium text-center py-6">Nenhum sorteio cadastrado.</p>
+        )}
+      </div>
+
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -699,7 +903,7 @@ export default function AdminPixPremiado() {
               title="Esta função está temporariamente desativada"
             >
               <RefreshCw className="w-4 h-4" />
-              Gerar / Reinicializar Pool Desabilitado
+              Ação Desabilitada
             </button>
           </div>
         </div>
@@ -709,7 +913,7 @@ export default function AdminPixPremiado() {
           <div>
             <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-500" />
-              Simulação de Apuração (Sorteio)
+              Informar Resultado (Sorteio Externo)
             </h2>
 
             <div className="space-y-6">

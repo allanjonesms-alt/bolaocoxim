@@ -198,6 +198,25 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Pix Premiado Draws
+    match /pix_premiado_draws/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Minuto Certo Draws
+    match /minuto_certo_draws/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Minuto Certo Tickets
+    match /minuto_certo_tickets/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     match /settings/{document} {
       allow read: if true;
       allow write: if isAdmin();

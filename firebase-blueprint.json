@@ -59,6 +59,39 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "type", "amount", "status", "timestamp"]
+    },
+    "MinutoCertoDraw": {
+      "title": "MinutoCertoDraw",
+      "description": "A Minuto Certo draw/game instance.",
+      "type": "object",
+      "properties": {
+        "matchName": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "finished"] },
+        "winningMinute": { "type": "number" },
+        "winnerId": { "type": "string" },
+        "winnerName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "price": { "type": "number" },
+        "prize": { "type": "number" }
+      },
+      "required": ["matchName", "date", "time", "status", "price", "prize"]
+    },
+    "MinutoCertoTicket": {
+      "title": "MinutoCertoTicket",
+      "description": "A ticket purchased by a user for Minuto Certo.",
+      "type": "object",
+      "properties": {
+        "drawId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "minuteValue": { "type": "number" },
+        "minuteLabel": { "type": "string" },
+        "price": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["drawId", "userId", "userName", "minuteValue", "minuteLabel", "price"]
     }
   },
   "firestore": {
@@ -77,6 +110,14 @@
     "transactions/{transactionId}": {
       "schema": { "$ref": "Transaction" },
       "description": "Transactions for deposits, withdrawals, and bets."
+    },
+    "minuto_certo_draws/{drawId}": {
+      "schema": { "$ref": "MinutoCertoDraw" },
+      "description": "Minuto Certo draws."
+    },
+    "minuto_certo_tickets/{ticketId}": {
+      "schema": { "$ref": "MinutoCertoTicket" },
+      "description": "Tickets purchased for Minuto Certo."
     }
   }
 }

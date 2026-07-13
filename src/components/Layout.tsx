@@ -113,7 +113,7 @@ export default function Layout() {
                 <Link to="/panel?openFinance=true" className="flex flex-col items-end group transition" title="Depositar ou Sacar">
                   <span className="text-sm font-medium text-emerald-50 group-hover:text-yellow-400 transition">{profile.name}</span>
                   <span className="text-xs text-yellow-300 bg-white/10 px-2.5 py-0.5 rounded-full mt-0.5 font-mono font-medium border border-yellow-400/20 shadow-inner group-hover:bg-white/20 transition-all duration-200">
-                    R$ {profile.balance.toFixed(2)}
+                    R$ {(profile.balance ?? 0).toFixed(2)}
                   </span>
                 </Link>
                 
