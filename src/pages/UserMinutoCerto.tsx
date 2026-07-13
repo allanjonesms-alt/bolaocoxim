@@ -143,7 +143,7 @@ export default function UserMinutoCerto() {
           type: 'bet',
           amount: -actualCost,
           status: 'confirmed',
-          timestamp: new Date().toISOString(),
+          timestamp: serverTimestamp(),
           description: `Compra de Bilhetes Minuto Certo (${purchaseQty}x) - Minutos: ${labelsList} (Partida: ${draw.matchName})`
         });
       });

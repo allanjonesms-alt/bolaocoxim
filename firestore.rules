@@ -69,7 +69,7 @@ service cloud.firestore {
               incoming().diff(existing()).affectedKeys().hasOnly(['balance']) &&
               incoming().balance is number &&
               incoming().balance >= 0 &&
-              (incoming().balance == existing().balance - 5 || incoming().balance == existing().balance - 1 || incoming().balance == existing().balance - 2) &&
+              incoming().balance < existing().balance &&
               incoming().role == existing().role
             )
           )

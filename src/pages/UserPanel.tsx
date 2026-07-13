@@ -226,7 +226,7 @@ export default function UserPanel() {
           type: 'bet',
           amount: -draw.price,
           status: 'confirmed',
-          timestamp: new Date().toISOString(),
+          timestamp: serverTimestamp(),
           description: `Compra Bilhete Minuto Certo - Minuto: ${chosenLabel} (Partida: ${draw.matchName})`
         });
       });
