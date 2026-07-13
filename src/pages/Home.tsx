@@ -685,7 +685,7 @@ export default function Home() {
                   </p>
                   
                   <p className="text-slate-600 text-sm">
-                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. Garanta seus minutos preferidos para aumentar suas chances!
+                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. Adquira seus bilhetes aleatórios para aumentar suas chances!
                   </p>
 
                   <p className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-100">
