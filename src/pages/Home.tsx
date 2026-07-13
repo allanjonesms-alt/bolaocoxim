@@ -9,6 +9,8 @@ import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
 import { LEADERBOARD_PRIZE_MULTIPLIER } from '../utils/constants';
 import googleScoreboardImg from '../assets/images/google_scoreboard_1783945113545.jpg';
+import minutoCertoPosterImg from '../assets/images/minuto_certo_poster_1783948747129.jpg';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Teste de alteração para verificação de commit no GitHub
 
@@ -23,6 +25,7 @@ export default function Home() {
   const [bets, setBets] = useState<Bet[]>([]);
   const [winnersSettings, setWinnersSettings] = useState<{ active: boolean; matchId: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const [showMinutoPromo, setShowMinutoPromo] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
     setToast({ message, type });
@@ -34,6 +37,21 @@ export default function Home() {
     const a = m.team2?.toLowerCase() || '';
     return (h.includes('brasil') && a.includes('haiti')) || 
            (h.includes('haiti') && a.includes('brasil'));
+  };
+
+  useEffect(() => {
+    const hasSeenPromo = sessionStorage.getItem('hasSeenMinutoPromo');
+    if (!hasSeenPromo) {
+      const timer = setTimeout(() => {
+        setShowMinutoPromo(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const closePromo = () => {
+    setShowMinutoPromo(false);
+    sessionStorage.setItem('hasSeenMinutoPromo', 'true');
   };
 
   useEffect(() => {
@@ -710,7 +728,7 @@ export default function Home() {
                     />
                   </div>
                   <span className="text-[10px] text-slate-500 font-bold block leading-tight">
-                    Schjelderup 36&apos; (Minuto 36) <br /> Bellingham 45+2&apos; (Minuto 47)
+                    Schjelderup 36&apos; (Minuto 36) <br /> Bellingham 45+2&apos; (Minuto 45+2)
                   </span>
                 </div>
 
@@ -1006,6 +1024,69 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* Modal Promocional Minuto Certo */}
+      <AnimatePresence>
+        {showMinutoPromo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+            {/* Click outside to close */}
+            <div className="absolute inset-0" onClick={closePromo} />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="relative w-full max-w-sm bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-slate-800/80 flex flex-col gap-4 p-5 z-10"
+            >
+              {/* Header / Close */}
+              <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest">Aviso Especial!</h3>
+                </div>
+                <button
+                  onClick={closePromo}
+                  className="p-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer border border-slate-800/50 flex items-center justify-center"
+                  aria-label="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Poster / Image Link */}
+              <Link 
+                to="/minuto-certo" 
+                onClick={closePromo}
+                className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border border-slate-800 shadow-lg group hover:border-amber-500/50 transition-all duration-300 block"
+              >
+                <img 
+                  src={minutoCertoPosterImg} 
+                  alt="Minuto Certo Bolão Coxim" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-45 group-hover:opacity-20 transition-opacity" />
+                
+                {/* Badge Overlay */}
+                <div className="absolute bottom-3 left-3 bg-amber-500 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-wider shadow-md">
+                  Clique para comprar
+                </div>
+              </Link>
+
+              {/* CTA Button */}
+              <Link
+                to="/minuto-certo"
+                onClick={closePromo}
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-slate-950 font-black py-3 px-6 rounded-2xl text-center uppercase tracking-wider text-xs transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+              >
+                <Trophy className="h-3.5 w-3.5" />
+                <span>Adquirir Bilhetes</span>
+              </Link>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

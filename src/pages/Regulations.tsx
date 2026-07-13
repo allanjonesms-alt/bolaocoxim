@@ -312,16 +312,16 @@ export default function Regulations() {
                       <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px]">1º Tempo Regular</span>
                     </li>
                     <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-xs">
-                      <span className="font-bold text-slate-750">Minutos 46 a 50</span>
-                      <span className="text-indigo-800 font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px]">Acréscimos 1ºT (45+1&apos; a 45+5&apos;)</span>
+                      <span className="font-bold text-slate-750">Acréscimos 1ºT</span>
+                      <span className="text-indigo-800 font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px]">45+1&apos; a 45+5&apos;</span>
                     </li>
                     <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-xs">
-                      <span className="font-bold text-slate-750">Minutos 51 a 95</span>
-                      <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px]">2º Tempo Regular (46&apos; a 90&apos;)</span>
+                      <span className="font-bold text-slate-750">Minutos 46 a 90</span>
+                      <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px]">2º Tempo Regular</span>
                     </li>
                     <li className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-xs">
-                      <span className="font-bold text-slate-750">Minutos 96 a 100</span>
-                      <span className="text-indigo-800 font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px]">Acréscimos 2ºT (90+1&apos; a 90+5&apos;)</span>
+                      <span className="font-bold text-slate-750">Acréscimos 2ºT</span>
+                      <span className="text-indigo-800 font-bold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded text-[10px]">90+1&apos; a 90+5&apos;</span>
                     </li>
                   </ul>
                 </div>
@@ -361,13 +361,13 @@ export default function Regulations() {
                     <div className="bg-white p-3 rounded-lg border border-slate-100">
                       <p className="font-bold text-slate-800 mb-1">2º Gol (Inglaterra 45+2&apos;)</p>
                       <p className="text-slate-600 leading-relaxed">
-                        Marcado no acréscimo do 1º tempo. Conforme a regra de mapeamento, <strong className="text-indigo-700">45+2&apos;</strong> corresponde exatamente ao <strong>Minuto 47</strong>.
+                        Marcado no acréscimo do 1º tempo. O bilhete vencedor é o <strong>45+2</strong> e não o <strong>47</strong> (visto que o bilhete 47 representa o minuto 47 do segundo tempo regular). Os acréscimos do 1º tempo são compostos de forma exclusiva pelos bilhetes de 45+1 a 45+5.
                       </p>
                     </div>
                     <div className="bg-white p-3 rounded-lg border border-slate-100">
                       <p className="font-bold text-slate-800 mb-1">3º Gol (Inglaterra 93&apos;)</p>
                       <p className="text-slate-600 leading-relaxed">
-                        Marcado no acréscimo do 2º tempo (90+3&apos;). No mapeamento de acréscimos, <strong className="text-indigo-700">90+3&apos;</strong> corresponde exatamente ao <strong>Minuto 98</strong>.
+                        Marcado no acréscimo do 2º tempo (exibido como 90+3&apos; no placar oficial do Google). O bilhete vencedor é o <strong>90+3</strong> (que faz parte do lote de acréscimos de 90+1 a 90+5) e não o bilhete <strong>93</strong> (que é regular do 2º tempo).
                       </p>
                     </div>
                   </div>
