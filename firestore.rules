@@ -104,7 +104,7 @@ service cloud.firestore {
     // Bets
     function isValidBet(data) {
       return data.keys().hasAll(['userId', 'userName', 'matchId', 'predicted1', 'predicted2', 'amount', 'createdAt', 'status'])
-        && data.userId is string && data.userId == request.auth.uid
+        && data.userId is string
         && data.userName is string && data.userName.size() <= 100
         && data.matchId is string && data.matchId.size() <= 128
         && data.predicted1 is number && data.predicted1 >= 0
@@ -120,9 +120,13 @@ service cloud.firestore {
 
     match /bets/{betId} {
       allow read: if true;
-      allow create: if isSignedIn() && isValidBet(incoming()) &&
-        // ensure match exists and is open
-        get(/databases/$(database)/documents/matches/$(incoming().matchId)).data.status == 'open';
+      allow create: if isSignedIn() && isValidBet(incoming()) && (
+        isAdmin() ||
+        (
+          incoming().userId == request.auth.uid &&
+          get(/databases/$(database)/documents/matches/$(incoming().matchId)).data.status == 'open'
+        )
+      );
       allow update: if isValidId(betId) && (
         isAdmin() ||
         (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))

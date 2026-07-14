@@ -170,11 +170,6 @@ export default function AdminUsers() {
     const match = matches.find(m => m.id === adminBetMatchId);
     if (!match) return;
 
-    if (match.status !== 'open') {
-        showNotification('Apostas encerradas para esta partida.', 'error');
-        return;
-    }
-
     setPlacingAdminBet(true);
     
     try {

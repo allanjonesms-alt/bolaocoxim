@@ -67,11 +67,18 @@ export default function Home() {
            (h.includes('haiti') && a.includes('brasil'));
   };
 
+  const isFrancaEspanhaMatch = (m: Match): boolean => {
+    const h = m.team1?.toLowerCase() || '';
+    const a = m.team2?.toLowerCase() || '';
+    return (h.includes('frança') || h.includes('franca') || h.includes('france')) && (a.includes('espanha') || a.includes('spain')) ||
+           (h.includes('espanha') || h.includes('spain')) && (a.includes('frança') || a.includes('franca') || a.includes('france'));
+  };
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowMinutoPromo(true);
-    }, 1200);
-    return () => clearTimeout(timer);
+    // const timer = setTimeout(() => {
+    //   setShowMinutoPromo(true);
+    // }, 1200);
+    // return () => clearTimeout(timer);
   }, []);
 
   const closePromo = () => {
@@ -938,29 +945,36 @@ export default function Home() {
                         </div>
                         
                         {!isOpen || isBrasilHaitiMatch(match) ? (
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (printingPdfId) return;
+                          <div className="flex flex-col items-end gap-1.5">
+                            {isFrancaEspanhaMatch(match) && (
+                              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                PALPITES PENDENTES APROVADOS AS 14:51. 19 palpites
+                              </span>
+                            )}
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (printingPdfId) return;
 
-                              const { allowed, remainingText } = checkPdfAvailability(match);
-                              if (!allowed) {
-                                showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
-                                return;
-                              }
+                                const { allowed, remainingText } = checkPdfAvailability(match);
+                                if (!allowed) {
+                                  showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                                  return;
+                                }
 
-                              setPrintingPdfId(match.id);
-                              await generateMatchBetsPDF(match);
-                              setPrintingPdfId(null);
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-emerald-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
-                            title="Baixar PDF com todos os palpites para transparência"
-                            disabled={printingPdfId !== null}
-                          >
-                            <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
-                            <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
-                          </button>
+                                setPrintingPdfId(match.id);
+                                await generateMatchBetsPDF(match);
+                                setPrintingPdfId(null);
+                              }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-emerald-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                              title="Baixar PDF com todos os palpites para transparência"
+                              disabled={printingPdfId !== null}
+                            >
+                              <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
+                              <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-yellow-400/25 transition-colors border border-slate-200 group-hover:border-yellow-300">
                             <ChevronRight className="h-5 w-5 text-slate-500 group-hover:text-amber-800 transition-colors" />
@@ -1063,29 +1077,36 @@ export default function Home() {
                         </div>
                         
                         {!isOpen || isBrasilHaitiMatch(match) ? (
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (printingPdfId) return;
+                          <div className="flex flex-col items-end gap-1.5">
+                            {isFrancaEspanhaMatch(match) && (
+                              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                PALPITES PENDENTES APROVADOS AS 14:51. 19 palpites
+                              </span>
+                            )}
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (printingPdfId) return;
 
-                              const { allowed, remainingText } = checkPdfAvailability(match);
-                              if (!allowed) {
-                                showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
-                                return;
-                              }
+                                const { allowed, remainingText } = checkPdfAvailability(match);
+                                if (!allowed) {
+                                  showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                                  return;
+                                }
 
-                              setPrintingPdfId(match.id);
-                              await generateMatchBetsPDF(match);
-                              setPrintingPdfId(null);
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-indigo-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
-                            title="Baixar PDF com todos os palpites para transparência"
-                            disabled={printingPdfId !== null}
-                          >
-                            <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
-                            <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
-                          </button>
+                                setPrintingPdfId(match.id);
+                                await generateMatchBetsPDF(match);
+                                setPrintingPdfId(null);
+                              }}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-indigo-500/10 hover:scale-[1.03] active:scale-95 disabled:opacity-50"
+                              title="Baixar PDF com todos os palpites para transparência"
+                              disabled={printingPdfId !== null}
+                            >
+                              <Download className={`h-3.5 w-3.5 ${printingPdfId === match.id ? 'animate-bounce' : ''}`} />
+                              <span>{printingPdfId === match.id ? 'Gerando...' : 'Palpites PDF'}</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-indigo-100 transition-colors border border-slate-200">
                             <ChevronRight className="h-5 w-5 text-indigo-500 transition-colors" />
