@@ -263,7 +263,7 @@ export default function Regulations() {
 
             <div className="text-slate-600 text-sm leading-relaxed space-y-4">
               <p className="text-slate-700 font-medium text-base">
-                O <strong>Minuto Certo</strong> é uma modalidade promocional empolgante, onde você compra bilhetes com minutos aleatórios e concorre a um prêmio fixo de <strong className="text-amber-700">R$ 100,00</strong> por jogo oficial.
+                O <strong>Minuto Certo</strong> é uma modalidade promocional empolgante, onde você compra bilhetes com minutos aleatórios e concorre a um prêmio fixo de <strong className="text-amber-700">R$ 100,00</strong> por jogo oficial (válido exclusivamente para o <strong>1º gol</strong> da partida).
               </p>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -280,7 +280,7 @@ export default function Regulations() {
                     </li>
                     <li className="flex items-start gap-2.5">
                       <span className="text-amber-500 font-extrabold text-base leading-none">•</span>
-                      <span><strong>Prêmio não dividido:</strong> O prêmio é de <strong className="text-slate-800">R$ 100,00 inteiros</strong> para o detentor do minuto sorteado. Cada minuto é vendido no máximo uma vez, garantindo exclusividade!</span>
+                      <span><strong>Prêmio não dividido:</strong> O prêmio é de <strong className="text-slate-800">R$ 100,00 inteiros</strong> para o detentor do minuto sorteado do <strong>1º gol da partida</strong>. Cada minuto é vendido no máximo uma vez, garantindo exclusividade!</span>
                     </li>
                     <li className="flex items-start gap-2.5">
                       <span className="text-amber-500 font-extrabold text-base leading-none">•</span>

@@ -774,11 +774,11 @@ export default function Home() {
 
                 <div className="text-slate-600 text-sm leading-relaxed space-y-4">
                   <p className="text-slate-800 text-base sm:text-lg font-bold leading-snug">
-                    Participe do <span className="text-amber-700 font-black">Minuto Certo</span> por apenas <span className="text-amber-700 font-black">R$ 2,00</span> por bilhete! Se o gol do jogo sair no seu minuto, você leva o prêmio de <span className="text-emerald-700 font-black">R$ 100,00 sozinho</span>!
+                    Participe do <span className="text-amber-700 font-black">Minuto Certo</span> por apenas <span className="text-amber-700 font-black">R$ 2,00</span> por bilhete! Se o <span className="text-amber-700 font-black">1º GOL</span> do jogo sair no seu minuto, você leva o prêmio de <span className="text-emerald-700 font-black">R$ 100,00 sozinho</span>!
                   </p>
                   
                   <p className="text-slate-600 text-sm">
-                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. Adquira seus bilhetes aleatórios para aumentar suas chances!
+                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. <strong>Aposta válida para o 1º gol oficial da partida</strong> (caso o minuto do 1º gol esteja vazio, passa para os gols seguintes). Adquira seus bilhetes aleatórios para aumentar suas chances!
                   </p>
 
                   <p className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-100">
