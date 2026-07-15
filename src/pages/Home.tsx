@@ -75,10 +75,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // const timer = setTimeout(() => {
-    //   setShowMinutoPromo(true);
-    // }, 1200);
-    // return () => clearTimeout(timer);
+    const timer = setTimeout(() => {
+        setShowMinutoPromo(true);
+     }, 1200);
+     return () => clearTimeout(timer);
   }, []);
 
   const closePromo = () => {
