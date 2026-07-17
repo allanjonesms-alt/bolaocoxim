@@ -76,8 +76,8 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-        setShowMinutoPromo(true);
-     }, 1200);
+       setShowMinutoPromo(true);
+    }, 1200);
      return () => clearTimeout(timer);
   }, []);
 
@@ -431,82 +431,7 @@ export default function Home() {
       </div>
       */}
 
-      {/* Seção de Classificação Geral Premium */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card do Líder */}
-        <div className="bg-gradient-to-br from-amber-500/10 via-white to-white border border-yellow-500/30 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex items-center justify-between relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-400/5 rounded-full blur-xl pointer-events-none group-hover:bg-yellow-400/10 transition-all"></div>
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="bg-yellow-100 border border-yellow-300 p-2.5 rounded-xl">
-              <Crown className="h-5 w-5 text-yellow-600 animate-pulse" />
-            </div>
-            <div>
-              <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                Líder da Classificação
-              </span>
-              <h3 className="font-display font-black text-lg text-slate-800 mt-1 truncate max-w-[150px] sm:max-w-[200px]">
-                {leader ? leader.userName : 'Sem registro'}
-              </h3>
-              <p className="text-slate-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
-                <Trophy className="h-3 w-3 text-slate-400 shrink-0" />
-                {leader ? `${leader.points} pontos acumulados` : 'Faça palpites para pontuar'}
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/leaderboard"
-            className="bg-slate-50 hover:bg-yellow-400 border border-slate-200/85 hover:border-yellow-400 hover:text-slate-950 p-2 rounded-xl transition-all shadow-sm"
-          >
-            <ChevronRight className="h-4 w-4 text-slate-600 hover:text-slate-900" />
-          </Link>
-        </div>
 
-        {/* Card do Prêmio Acumulado */}
-        <div className="bg-gradient-to-br from-emerald-500/10 via-white to-white border border-emerald-500/20 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-3 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-400/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-400/10 transition-all"></div>
-          
-          <div className="flex items-center justify-between relative z-10 w-full">
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl">
-                <Trophy className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <span className="text-[9px] text-emerald-800 bg-emerald-50 border border-emerald-200/50 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
-                  Prêmio Estimado*
-                </span>
-                <h3 className="font-mono font-black text-xl text-emerald-700 mt-1 flex items-baseline gap-1.5">
-                  R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER).toFixed(2)} <span className="text-[9px] font-sans font-bold text-slate-400 uppercase tracking-wider">Total</span>
-                </h3>
-                <p className="text-slate-500 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
-                  <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
-                  Entrega em <strong className="text-slate-700">19/07 (Final da Copa)</strong>
-                </p>
-              </div>
-            </div>
-            <Link
-              to="/leaderboard"
-              className="bg-slate-50 hover:bg-emerald-500 hover:text-white border border-slate-200/85 hover:border-emerald-500 p-2 rounded-xl transition-all shadow-sm shrink-0"
-            >
-              <ChevronRight className="h-4 w-4 text-slate-600 hover:text-slate-900" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1.5 relative z-10 pt-3 border-t border-emerald-100">
-            <div className="bg-emerald-50 rounded-xl p-1.5 border border-emerald-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 mb-0.5">1º Lugar</span>
-              <span className="font-mono font-bold text-emerald-800 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}</span>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-1.5 border border-slate-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5">2º Lugar</span>
-              <span className="font-mono font-bold text-slate-700 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}</span>
-            </div>
-            <div className="bg-orange-50 rounded-xl p-1.5 border border-orange-200/50 flex flex-col items-center justify-center text-center">
-              <span className="text-[8px] font-black uppercase tracking-widest text-orange-600 mb-0.5">3º Lugar</span>
-              <span className="font-mono font-bold text-orange-700 text-xs">R$ {(totalPrizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Vencedores Section */}
       {winnersSettings?.active && winnersMatch && (

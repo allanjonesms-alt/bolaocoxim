@@ -125,23 +125,6 @@ export default function Leaderboard() {
           <div className="inline-flex flex-col bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner items-center mt-6">
             <span className="text-emerald-200/60 text-xs uppercase tracking-widest block mb-1 font-sans">Prêmio Acumulado Rank 1</span>
             <span className="text-yellow-400 text-4xl">R$ {prizePool.toFixed(2)}</span>
-            <div className="mt-4 pt-4 border-t border-emerald-800/50 w-full text-center flex flex-col gap-2">
-              <span className="text-emerald-300 text-[10px] uppercase tracking-widest block mb-2 font-sans">Prêmio Estimado*</span>
-              <div className="flex flex-col gap-1.5 items-center">
-                <span className="text-yellow-400 text-lg font-black flex items-center gap-2">
-                  <span className="text-[10px] bg-yellow-500/20 text-yellow-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">1º</span>
-                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}
-                </span>
-                <span className="text-slate-300 text-base font-bold flex items-center gap-2">
-                  <span className="text-[10px] bg-slate-400/20 text-slate-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">2º</span>
-                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}
-                </span>
-                <span className="text-orange-400 text-sm font-bold flex items-center gap-2">
-                  <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded uppercase tracking-wider font-sans">3º</span>
-                  R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -179,8 +162,25 @@ export default function Leaderboard() {
                       {row.userName}
                       {index === 0 && <span className="ml-3 text-[10px] bg-yellow-100 text-amber-800 px-2.5 py-1 rounded-md border border-yellow-200 font-bold tracking-wide uppercase">Líder</span>}
                     </td>
-                    <td className="py-5 px-6 text-right font-extrabold text-emerald-600 font-mono text-lg">
-                      {row.points}
+                    <td className="py-5 px-6 text-right font-mono text-lg">
+                      <div className="flex items-center justify-end gap-3">
+                        <span className="font-extrabold text-emerald-600">{row.points} pts</span>
+                        {index === 0 && (
+                          <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-lg whitespace-nowrap shadow-sm" title="Prêmio Estimado (70%)">
+                            Est. R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.7).toFixed(2)}
+                          </span>
+                        )}
+                        {index === 1 && (
+                          <span className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg whitespace-nowrap shadow-sm" title="Prêmio Estimado (20%)">
+                            Est. R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.2).toFixed(2)}
+                          </span>
+                        )}
+                        {index === 2 && (
+                          <span className="text-xs font-bold text-orange-700 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-lg whitespace-nowrap shadow-sm" title="Prêmio Estimado (10%)">
+                            Est. R$ {(prizePool * LEADERBOARD_PRIZE_MULTIPLIER * 0.1).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
