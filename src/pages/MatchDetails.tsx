@@ -1032,18 +1032,21 @@ export default function MatchDetails() {
                   </span>
                 </button>
                 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('minuto_certo')}
-                  className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer border ${
-                    activeTab === 'minuto_certo'
-                      ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 border-amber-600 shadow-md shadow-amber-500/35 font-extrabold scale-102'
-                      : 'bg-amber-50 border-amber-350 text-amber-700 hover:bg-amber-100/90 shadow-sm shadow-amber-100/50 hover:border-amber-400'
-                  }`}
-                >
-                  <Clock className={`h-3.5 w-3.5 ${activeTab === 'minuto_certo' ? 'text-slate-950' : 'text-amber-600'}`} />
-                  Minuto Certo
-                </button>
+                {/* Minuto Certo tab hidden at user request */}
+                {false && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('minuto_certo')}
+                    className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer border ${
+                      activeTab === 'minuto_certo'
+                        ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 border-amber-600 shadow-md shadow-amber-500/35 font-extrabold scale-102'
+                        : 'bg-amber-50 border-amber-350 text-amber-700 hover:bg-amber-100/90 shadow-sm shadow-amber-100/50 hover:border-amber-400'
+                    }`}
+                  >
+                    <Clock className={`h-3.5 w-3.5 ${activeTab === 'minuto_certo' ? 'text-slate-950' : 'text-amber-600'}`} />
+                    Minuto Certo
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-col items-end gap-1.5 self-start md:self-center">

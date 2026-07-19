@@ -267,6 +267,33 @@ export default function AdminMinutoCerto() {
     }
   };
 
+  // Handle Finish Draw Sem Vencedor (Nenhum Gol)
+  const handleFinishDrawNoWinner = async () => {
+    if (!finishingDraw) return;
+    setIsSubmittingWinner(true);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const drawRef = doc(db, 'minuto_certo_draws', finishingDraw.id);
+        transaction.update(drawRef, {
+          status: 'finished',
+          winningMinute: 0,
+          winnerId: null,
+          winnerName: 'Sem Vencedor (Nenhum Gol)'
+        });
+      });
+
+      showToast('Sorteio encerrado sem vencedor com sucesso!', 'success');
+      setFinishingDraw(null);
+      setWinningMinuteInput('');
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao encerrar sorteio sem vencedor.', 'error');
+    } finally {
+      setIsSubmittingWinner(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
       {/* Toast Notification */}
@@ -456,25 +483,35 @@ export default function AdminMinutoCerto() {
             </button>
           </div>
 
-          <div className="max-w-md space-y-3">
+          <div className="max-w-md space-y-4">
             <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Minuto do 1° Gol (1 a 100)</label>
-            <div className="flex gap-3">
-              <input
-                type="number"
-                min="1"
-                max="100"
-                placeholder="Informe de 1 a 100"
-                value={winningMinuteInput}
-                onChange={e => setWinningMinuteInput(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl outline-none text-slate-800 text-sm font-semibold focus:ring-2 focus:ring-amber-500/25"
-              />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  placeholder="Informe de 1 a 100"
+                  value={winningMinuteInput}
+                  onChange={e => setWinningMinuteInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl outline-none text-slate-800 text-sm font-semibold focus:ring-2 focus:ring-amber-500/25"
+                />
+                <button
+                  type="button"
+                  onClick={handleFinishDraw}
+                  disabled={isSubmittingWinner}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md shadow-amber-600/10 text-xs uppercase tracking-wider whitespace-nowrap cursor-pointer"
+                >
+                  {isSubmittingWinner ? 'Processando...' : 'Lançar & Premiar'}
+                </button>
+              </div>
               <button
                 type="button"
-                onClick={handleFinishDraw}
+                onClick={handleFinishDrawNoWinner}
                 disabled={isSubmittingWinner}
-                className="bg-amber-600 hover:bg-amber-700 disabled:bg-amber-300 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-amber-600/10 text-xs uppercase tracking-wider whitespace-nowrap"
+                className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md text-xs uppercase tracking-wider whitespace-nowrap cursor-pointer"
               >
-                {isSubmittingWinner ? 'Processando...' : 'Lançar & Premiar'}
+                Sem Vencedor (Sem Gols)
               </button>
             </div>
             <p className="text-[10px] text-amber-800 font-medium">
@@ -537,10 +574,16 @@ export default function AdminMinutoCerto() {
                       </div>
                     </td>
                     <td className="py-4">
-                      {draw.winningMinute ? (
-                        <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg border border-indigo-150">
-                          {formatMinuteValue(draw.winningMinute)} min ({getMinutePeriod(draw.winningMinute)})
-                        </span>
+                      {draw.status === 'finished' ? (
+                        draw.winningMinute ? (
+                          <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 font-mono font-extrabold text-xs px-2.5 py-1 rounded-lg border border-indigo-150">
+                            {formatMinuteValue(draw.winningMinute)} min ({getMinutePeriod(draw.winningMinute)})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 font-extrabold text-xs px-2.5 py-1 rounded-lg border border-slate-200">
+                            Sem Gols
+                          </span>
+                        )
                       ) : (
                         <span className="text-slate-400 text-xs font-medium italic">Aguardando</span>
                       )}

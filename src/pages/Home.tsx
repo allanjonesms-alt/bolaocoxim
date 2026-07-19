@@ -886,99 +886,101 @@ export default function Home() {
             </div>
           )}
 
-          {/* Seção Destaque MINUTO CERTO */}
-          <div className="bg-gradient-to-br from-amber-500/10 via-amber-50/20 to-white border border-amber-300/80 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden text-left">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/15 rounded-full blur-[50px] pointer-events-none animate-pulse"></div>
-            
-            <div className="flex flex-col xl:flex-row items-stretch justify-between gap-8 relative z-10">
-              <div className="space-y-4 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
-                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    Novidade Imperdível
-                  </span>
-                  <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs font-mono">
-                    Bilhete: R$ 2,00
-                  </span>
-                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs">
-                    Prêmio: R$ 100,00 Fixo
-                  </span>
-                </div>
-                
-                <h3 className="text-2xl sm:text-3xl font-display font-black text-amber-850 tracking-tight">
-                  MINUTO CERTO ⚽⏱️
-                </h3>
-
-                <div className="text-slate-600 text-sm leading-relaxed space-y-4">
-                  <p className="text-slate-800 text-base sm:text-lg font-bold leading-snug">
-                    Participe do <span className="text-amber-700 font-black">Minuto Certo</span> por apenas <span className="text-amber-700 font-black">R$ 2,00</span> por bilhete! Se o <span className="text-amber-700 font-black">1º GOL</span> do jogo sair no seu minuto, você leva o prêmio de <span className="text-emerald-700 font-black">R$ 100,00 sozinho</span>!
-                  </p>
-                  
-                  <p className="text-slate-600 text-sm">
-                    Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. <strong>Aposta válida para o 1º gol oficial da partida</strong> (caso o minuto do 1º gol esteja vazio, passa para os gols seguintes). Adquira seus bilhetes aleatórios para aumentar suas chances!
-                  </p>
-
-                  <p className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-100">
-                    <AlertCircle className="w-4 h-4 text-indigo-500 shrink-0" />
-                    <span>
-                      Usamos a <strong>transmissão oficial e o painel de busca do Google</strong> como referência de minutagem oficial do gol.
+          {/* Seção Destaque MINUTO CERTO - OCULTADA */}
+          {false && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-amber-50/20 to-white border border-amber-300/80 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden text-left">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/15 rounded-full blur-[50px] pointer-events-none animate-pulse"></div>
+              
+              <div className="flex flex-col xl:flex-row items-stretch justify-between gap-8 relative z-10">
+                <div className="space-y-4 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      Novidade Imperdível
                     </span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Lado Direito: Exemplo de Imagem e Botão */}
-              <div className="flex flex-col justify-between items-center xl:w-[320px] shrink-0 bg-white/65 border border-slate-200 p-4 rounded-2xl gap-4">
-                <div className="w-full text-center space-y-2">
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Exemplo de Apuração (Google)</span>
-                  <div className="bg-slate-50 border border-slate-200/60 p-2 rounded-lg flex justify-center">
-                    <img 
-                      src={googleScoreboardImg} 
-                      alt="Painel Google Scoreboard Exemplo" 
-                      className="max-w-full h-auto max-h-[85px] object-contain rounded"
-                      referrerPolicy="no-referrer"
-                      loading="lazy"
-                    />
+                    <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs font-mono">
+                      Bilhete: R$ 2,00
+                    </span>
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider shadow-xs">
+                      Prêmio: R$ 100,00 Fixo
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold block leading-tight">
-                    Schjelderup 36&apos; (Minuto 36) <br /> Bellingham 45+2&apos; (Minuto 45+2)
-                  </span>
+                  
+                  <h3 className="text-2xl sm:text-3xl font-display font-black text-amber-850 tracking-tight">
+                    MINUTO CERTO ⚽⏱️
+                  </h3>
+
+                  <div className="text-slate-605 text-sm leading-relaxed space-y-4">
+                    <p className="text-slate-800 text-base sm:text-lg font-bold leading-snug">
+                      Participe do <span className="text-amber-700 font-black">Minuto Certo</span> por apenas <span className="text-amber-700 font-black">R$ 2,00</span> por bilhete! Se o <span className="text-amber-700 font-black">1º GOL</span> do jogo sair no seu minuto, você leva o prêmio de <span className="text-emerald-700 font-black">R$ 100,00 sozinho</span>!
+                    </p>
+                    
+                    <p className="text-slate-600 text-sm">
+                      Nessa modalidade especial, o prêmio terá um <strong className="text-slate-800">vencedor único</strong> e <strong className="text-slate-800">não será dividido</strong> de forma alguma. <strong>Aposta válida para o 1º gol oficial da partida</strong> (caso o minuto do 1º gol esteja vazio, passa para os gols seguintes). Adquira seus bilhetes aleatórios para aumentar suas chances!
+                    </p>
+
+                    <p className="text-xs text-slate-500 flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <AlertCircle className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span>
+                        Usamos a <strong>transmissão oficial e o painel de busca do Google</strong> como referência de minutagem oficial do gol.
+                      </span>
+                    </p>
+                  </div>
                 </div>
 
-                <div className="w-full space-y-2">
-                  <button
-                    onClick={handleConvertClick}
-                    disabled={isConverting}
-                    className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider py-3.5 px-3 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 flex flex-col items-center justify-center gap-1 border border-emerald-400/30 cursor-pointer w-full text-center group"
-                  >
-                    <span className="flex items-center gap-1.5 justify-center">
-                      <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse shrink-0 group-hover:rotate-12 transition-transform" />
-                      <span>{isConverting ? "Convertendo..." : "CONVERTA SEU SALDO em MINUTOS"}</span>
+                {/* Lado Direito: Exemplo de Imagem e Botão */}
+                <div className="flex flex-col justify-between items-center xl:w-[320px] shrink-0 bg-white/65 border border-slate-200/60 p-4 rounded-2xl gap-4">
+                  <div className="w-full text-center space-y-2">
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 block">Exemplo de Apuração (Google)</span>
+                    <div className="bg-slate-50 border border-slate-200/60 p-2 rounded-lg flex justify-center">
+                      <img 
+                        src={googleScoreboardImg} 
+                        alt="Painel Google Scoreboard Exemplo" 
+                        className="max-w-full h-auto max-h-[85px] object-contain rounded"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-bold block leading-tight">
+                      Schjelderup 36&apos; (Minuto 36) <br /> Bellingham 45+2&apos; (Minuto 45+2)
                     </span>
-                    <span className="text-[10px] text-emerald-100 font-extrabold normal-case tracking-normal">
-                      Promoção: Ganhe +2 Bilhetes Gratuitos! 🎁
-                    </span>
-                  </button>
+                  </div>
 
-                  <Link
-                    to="/minuto-certo"
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-95 flex items-center gap-1.5 border border-amber-400 justify-center text-center w-full"
-                  >
-                    <span>Adquirir Meu Minuto</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="w-full space-y-2">
+                    <button
+                      onClick={handleConvertClick}
+                      disabled={isConverting}
+                      className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider py-3.5 px-3 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 flex flex-col items-center justify-center gap-1 border border-emerald-400/30 cursor-pointer w-full text-center group"
+                    >
+                      <span className="flex items-center gap-1.5 justify-center">
+                        <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse shrink-0 group-hover:rotate-12 transition-transform" />
+                        <span>{isConverting ? "Convertendo..." : "CONVERTA SEU SALDO em MINUTOS"}</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-100 font-extrabold normal-case tracking-normal">
+                        Promoção: Ganhe +2 Bilhetes Gratuitos! 🎁
+                      </span>
+                    </button>
 
-                  <Link
-                    to="/regulamento"
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 justify-center w-full"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Ver regulamento completo</span>
-                  </Link>
+                    <Link
+                      to="/minuto-certo"
+                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-95 flex items-center gap-1.5 border border-amber-400 justify-center text-center w-full"
+                    >
+                      <span>Adquirir Meu Minuto</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+
+                    <Link
+                      to="/regulamento"
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 justify-center w-full"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Ver regulamento completo</span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {officialMatches.length > 0 && (
             <div>
