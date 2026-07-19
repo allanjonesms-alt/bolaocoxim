@@ -35,6 +35,13 @@ export default function UserMinutoCerto() {
     };
   }, [user]);
 
+  const isBefore16hAppTime = () => {
+    const now = new Date();
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const appTime = new Date(utcTime - (4 * 3600000));
+    return appTime.getHours() < 16;
+  };
+
   const handleBuyMultipleMinutoTickets = async (drawId: string, quantity: number) => {
     if (!user || !profile) return;
     const draw = minutoDraws.find(d => d.id === drawId);
@@ -42,6 +49,12 @@ export default function UserMinutoCerto() {
 
     if (draw.status !== 'active') {
       setMinutoToast({ message: 'Este sorteio já está encerrado!', type: 'error' });
+      setTimeout(() => setMinutoToast(null), 4000);
+      return;
+    }
+
+    if (!isBefore16hAppTime()) {
+      setMinutoToast({ message: 'As compras de bilhetes se encerraram às 16h (horário do app, -4:00 UTC).', type: 'error' });
       setTimeout(() => setMinutoToast(null), 4000);
       return;
     }
@@ -62,14 +75,14 @@ export default function UserMinutoCerto() {
       const soldMinutes = drawTickets.map(t => t.minuteValue);
 
       const availableMinutes: number[] = [];
-      for (let i = 1; i <= 100; i++) {
+      for (let i = 46; i <= 95; i++) {
         if (!soldMinutes.includes(i)) {
           availableMinutes.push(i);
         }
       }
 
       if (availableMinutes.length === 0) {
-        setMinutoToast({ message: 'Todos os bilhetes para este sorteio foram vendidos!', type: 'error' });
+        setMinutoToast({ message: 'Todos os bilhetes do segundo tempo (46 a 95) para este sorteio foram vendidos!', type: 'error' });
         setTimeout(() => setMinutoToast(null), 4000);
         setIsPurchasingMinuto(false);
         return;
@@ -77,7 +90,7 @@ export default function UserMinutoCerto() {
 
       const purchaseQty = Math.min(quantity, availableMinutes.length);
       if (purchaseQty < quantity) {
-        setMinutoToast({ message: `Apenas ${availableMinutes.length} minutos estão disponíveis para compra neste sorteio.`, type: 'error' });
+        setMinutoToast({ message: `Apenas ${availableMinutes.length} minutos do segundo tempo estão disponíveis para compra neste sorteio.`, type: 'error' });
         setTimeout(() => setMinutoToast(null), 4000);
         setIsPurchasingMinuto(false);
         return;

@@ -99,9 +99,21 @@ export default function Home() {
            (h.includes('espanha') || h.includes('spain')) && (a.includes('frança') || a.includes('franca') || a.includes('france'));
   };
 
+  const isBefore16hAppTime = () => {
+    const now = new Date();
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const appTime = new Date(utcTime - (4 * 3600000));
+    return appTime.getHours() < 16;
+  };
+
   const handleConvertClick = () => {
     if (!user || !profile) {
       showToast("Por favor, faça login para converter seu saldo em minutos!", "error");
+      return;
+    }
+
+    if (!isBefore16hAppTime()) {
+      showToast("As conversões de saldo se encerraram às 16h (horário do app, -4:00 UTC).", "error");
       return;
     }
 
@@ -111,14 +123,14 @@ export default function Home() {
     }
 
     const currentBalance = profile.balance || 0;
+    if (currentBalance < 2.00) {
+      showToast("Você precisa de pelo menos R$ 2,00 de saldo para converter em minutos. Sem o saldo mínimo, não é possível conceder os 2 bilhetes gratuitos.", "error");
+      return;
+    }
+
     const paidQty = Math.floor(currentBalance / 2);
     const freeQty = 2;
     const totalQty = paidQty + freeQty;
-
-    if (paidQty <= 0) {
-      showToast("Você precisa de pelo menos R$ 2,00 de saldo para converter em minutos.", "error");
-      return;
-    }
 
     const totalCost = paidQty * 2;
     const remainingBalance = currentBalance - totalCost;
@@ -141,6 +153,19 @@ export default function Home() {
       return;
     }
 
+    if (!isBefore16hAppTime()) {
+      showToast("As conversões de saldo se encerraram às 16h (horário do app, -4:00 UTC).", "error");
+      setShowConvertConfirm(false);
+      return;
+    }
+
+    const currentBalance = profile.balance || 0;
+    if (currentBalance < 2.00) {
+      showToast("Você precisa de pelo menos R$ 2,00 de saldo para realizar a conversão.", "error");
+      setShowConvertConfirm(false);
+      return;
+    }
+
     setShowConvertConfirm(false);
     setIsConverting(true);
 
@@ -153,16 +178,16 @@ export default function Home() {
       );
       const soldMinutes = ticketsSnap.docs.map(doc => (doc.data() as MinutoCertoTicket).minuteValue);
 
-      // 2. Find available minutes
+      // 2. Find available minutes of the second half (46 to 95)
       const availableMinutes: number[] = [];
-      for (let i = 1; i <= 100; i++) {
+      for (let i = 46; i <= 95; i++) {
         if (!soldMinutes.includes(i)) {
           availableMinutes.push(i);
         }
       }
 
       if (availableMinutes.length === 0) {
-        showToast("Todos os minutos para este sorteio já foram adquiridos!", "error");
+        showToast("Todos os minutos do segundo tempo (46 a 95) para este sorteio já foram adquiridos!", "error");
         setIsConverting(false);
         return;
       }
@@ -171,13 +196,6 @@ export default function Home() {
       const actualQty = Math.min(totalRequestedQty, availableMinutes.length);
       const actualPaidQty = Math.max(0, actualQty - convertSummary.freeQty);
       const totalCost = actualPaidQty * 2;
-
-      const currentBalance = profile.balance || 0;
-      if (currentBalance < 2.00) {
-        showToast("Você precisa de pelo menos R$ 2,00 de saldo para converter em minutos.", "error");
-        setIsConverting(false);
-        return;
-      }
 
       if (currentBalance < totalCost) {
         showToast(`Saldo insuficiente para converter. Você precisa de pelo menos R$ ${totalCost.toFixed(2)}.`, "error");
