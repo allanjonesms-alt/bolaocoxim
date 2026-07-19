@@ -122,10 +122,6 @@ export default function Leaderboard() {
           <h1 className="text-4xl font-display font-bold mb-3 tracking-tight flex justify-center items-center">
             Classificação <span className="text-yellow-400 ml-3">Geral</span>
           </h1>
-          <div className="inline-flex flex-col bg-emerald-950/70 backdrop-blur-md rounded-2xl px-8 py-5 font-mono text-2xl font-bold border border-yellow-400/30 shadow-inner items-center mt-6">
-            <span className="text-emerald-200/60 text-xs uppercase tracking-widest block mb-1 font-sans">Prêmio Acumulado Rank 1</span>
-            <span className="text-yellow-400 text-4xl">R$ {prizePool.toFixed(2)}</span>
-          </div>
         </div>
       </div>
 

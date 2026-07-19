@@ -3,10 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, runTransaction, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Match, Bet } from '../types';
+import { Match, Bet, MinutoCertoDraw, MinutoCertoTicket } from '../types';
 import { CheckCircle2, DollarSign, Clock, Lock, User, Radio, Save, Edit3, AlertTriangle, Trophy, Check, X, Download } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
+import { formatMinuteValue, getMinutePeriod } from '../lib/utils';
 
 export default function MatchDetails() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,12 @@ export default function MatchDetails() {
   const [predict2, setPredict2] = useState<string>('');
   const [placingBet, setPlacingBet] = useState(false);
   const [liveFixtures, setLiveFixtures] = useState<any[]>([]);
+
+  const [tickSpeed, setTickSpeed] = useState<number>(3000);
+  const [activeTab, setActiveTab] = useState<'placares' | 'minuto_certo'>('placares');
+  const [minutoDraw, setMinutoDraw] = useState<MinutoCertoDraw | null>(null);
+  const [minutoTickets, setMinutoTickets] = useState<MinutoCertoTicket[]>([]);
+  const [minutoSearch, setMinutoSearch] = useState<string>('');
 
   useEffect(() => {
     const fetchLiveMatches = async () => {
@@ -103,6 +110,17 @@ export default function MatchDetails() {
       setLive2(match.liveResult2 ?? 0);
     }
   }, [match?.liveResult1, match?.liveResult2]);
+
+  useEffect(() => {
+    if (activeTab === 'minuto_certo') {
+      setTimeout(() => {
+        const activeEl = document.getElementById('active-minute-ticket');
+        if (activeEl) {
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [activeTab, match?.timerValue]);
 
   const handleAdjustLiveScore = (team: 1 | 2, adjustment: number) => {
     if (team === 1) {
@@ -266,6 +284,101 @@ export default function MatchDetails() {
       unsubBets();
     };
   }, [id]);
+
+  const formatTimerValue = (val: number): string => {
+    if (val === 0) return '0';
+    return formatMinuteValue(val);
+  };
+
+  useEffect(() => {
+    if (!match) return;
+    
+    const unsubDraws = onSnapshot(collection(db, 'minuto_certo_draws'), (snapshot) => {
+      const draws = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MinutoCertoDraw));
+      const foundDraw = draws.find(d => {
+        const drawNameLower = d.matchName.toLowerCase();
+        const t1 = match.team1.toLowerCase();
+        const t2 = match.team2.toLowerCase();
+        const phase = (match.phase || '').toLowerCase();
+        
+        const normalize = (str: string) => 
+          str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ç/g, "c");
+        
+        const drawNorm = normalize(drawNameLower);
+        const t1Norm = normalize(t1);
+        const t2Norm = normalize(t2);
+
+        // 1. Direct team name matching
+        if ((drawNorm.includes(t1Norm) && drawNorm.includes(t2Norm)) ||
+            (drawNameLower.includes(t1) && drawNameLower.includes(t2))) {
+          return true;
+        }
+
+        // 2. Special match for España vs Argentina / Copa World Cup Final (Since the draw is registered as "Final da Copa do Mundo")
+        if (phase === 'final' && (drawNameLower.includes('final') || drawNameLower.includes('copa'))) {
+          return true;
+        }
+        if (t1.includes('espanha') && t2.includes('argentina') && (drawNameLower.includes('final') || drawNameLower.includes('copa'))) {
+          return true;
+        }
+
+        return false;
+      });
+      
+      if (foundDraw) {
+        setMinutoDraw(foundDraw);
+      } else {
+        setMinutoDraw(null);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'minuto_certo_draws'));
+
+    return () => {
+      unsubDraws();
+    };
+  }, [match?.id, match?.team1, match?.team2, match?.phase]);
+
+  useEffect(() => {
+    if (!minutoDraw) {
+      setMinutoTickets([]);
+      return;
+    }
+
+    const qTickets = query(collection(db, 'minuto_certo_tickets'), where('drawId', '==', minutoDraw.id));
+    const unsubTickets = onSnapshot(qTickets, (snapshot) => {
+      const tickets = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MinutoCertoTicket));
+      setMinutoTickets(tickets);
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'minuto_certo_tickets'));
+
+    return () => {
+      unsubTickets();
+    };
+  }, [minutoDraw?.id]);
+
+  useEffect(() => {
+    if (!match || !match.timerActive || profile?.role !== 'admin') return;
+
+    const interval = setInterval(async () => {
+      const currentVal = match.timerValue || 0;
+      let nextVal = currentVal;
+
+      if (currentVal >= 0 && currentVal < 50) {
+        nextVal = currentVal + 1;
+      } else if (currentVal >= 51 && currentVal < 100) {
+        nextVal = currentVal + 1;
+      } else {
+        await updateDoc(doc(db, 'matches', match.id), {
+          timerActive: false
+        });
+        return;
+      }
+
+      await updateDoc(doc(db, 'matches', match.id), {
+        timerValue: nextVal
+      });
+    }, tickSpeed);
+
+    return () => clearInterval(interval);
+  }, [match?.id, match?.timerActive, match?.timerValue, profile?.role, tickSpeed]);
 
   const handlePlaceBet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -695,6 +808,120 @@ export default function MatchDetails() {
               </div>
             </form>
           )}
+
+          {/* Divider and Minuto Certo Timer Control */}
+          <div className="border-t border-white/10 pt-6 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-400 shrink-0" />
+                <span className="font-display font-black text-sm tracking-wider text-amber-400 uppercase">
+                  Controle do Cronômetro - Minuto Certo
+                </span>
+              </div>
+              {match.timerActive && (
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 font-extrabold px-2.5 py-1 rounded-full border border-emerald-500/30 animate-pulse flex items-center gap-1.5 uppercase tracking-wider">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                  Correndo
+                </span>
+              )}
+            </div>
+            
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-950/45 p-5 rounded-2xl border border-white/5 relative z-10">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-slate-900 border border-slate-850 px-4 py-2.5 rounded-xl flex items-center gap-3">
+                  <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Minuto:</span>
+                  <span className="font-mono text-xl font-black text-amber-400">{formatTimerValue(match.timerValue || 0)}'</span>
+                  <span className="text-slate-500 text-[10px] font-bold">({getMinutePeriod(match.timerValue || 0)})</span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateDoc(doc(db, 'matches', match.id), {
+                        timerActive: !(match.timerActive || false)
+                      });
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md ${
+                      match.timerActive
+                        ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/15'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/15'
+                    }`}
+                  >
+                    {match.timerActive ? 'Pausar' : 'Iniciar'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const val = Math.max(0, (match.timerValue || 0) - 1);
+                      await updateDoc(doc(db, 'matches', match.id), {
+                        timerValue: val
+                      });
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition border border-slate-750 active:scale-95 cursor-pointer"
+                  >
+                    -1 min
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const val = Math.min(100, (match.timerValue || 0) + 1);
+                      await updateDoc(doc(db, 'matches', match.id), {
+                        timerValue: val
+                      });
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition border border-slate-750 active:scale-95 cursor-pointer"
+                  >
+                    +1 min
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateDoc(doc(db, 'matches', match.id), {
+                        timerValue: 0,
+                        timerActive: false
+                      });
+                    }}
+                    className="bg-red-950/40 hover:bg-red-900/40 text-red-350 hover:text-red-200 border border-red-900/30 font-bold px-3 py-2.5 rounded-xl text-xs transition active:scale-95 cursor-pointer"
+                  >
+                    Zerar (0')
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateDoc(doc(db, 'matches', match.id), {
+                        timerValue: 51,
+                        timerActive: false
+                      });
+                    }}
+                    className="bg-indigo-950/45 hover:bg-indigo-900/45 text-indigo-300 hover:text-indigo-200 border border-indigo-900/30 font-bold px-3.5 py-2.5 rounded-xl text-xs transition active:scale-95 cursor-pointer"
+                  >
+                    Reiniciar no 46'
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 text-xs font-semibold">Velocidade:</span>
+                <select
+                  value={tickSpeed}
+                  onChange={(e) => setTickSpeed(Number(e.target.value))}
+                  className="bg-slate-900 border border-slate-750 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value={1000}>Extrema (1s = 1min)</option>
+                  <option value={2000}>Rápida (2s = 1min)</option>
+                  <option value={3000}>Normal (3s = 1min)</option>
+                  <option value={5000}>Lenta (5s = 1min)</option>
+                  <option value={10000}>Demo (10s = 1min)</option>
+                  <option value={60000}>Real (60s = 1min)</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -783,182 +1010,372 @@ export default function MatchDetails() {
           </div>
         </div>
 
-        {/* Existing Bets */}
+        {/* Existing Bets / Minuto Certo */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8">
-            <h2 className="text-xl font-display font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <span className="flex items-center gap-2.5">
-                Placares Apostados
-                <span className="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-mono font-bold">{bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length} Palpites</span>
-              </span>
-              
-              {match && (match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000) || isBrasilHaiti) && (
+            {/* Header / Tabs */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 mb-6">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={async () => {
-                    if (printingPdf) return;
-
-                    if (!isBrasilHaiti) {
-                      const matchTime = new Date(match.date).getTime();
-                      const closingTime = matchTime - 30 * 60 * 1000;
-                      const pdfAvailableTime = closingTime + 15 * 60 * 1000;
-                      const nowTime = Date.now();
-                      
-                      if (nowTime < pdfAvailableTime) {
-                        const diffMs = pdfAvailableTime - nowTime;
-                        const totalSeconds = Math.ceil(diffMs / 1000);
-                        const minutes = Math.floor(totalSeconds / 60);
-                        const seconds = totalSeconds % 60;
-                        const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
-                        showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
-                        return;
-                      }
-                    }
-
-                    setPrintingPdf(true);
-                    await generateMatchBetsPDF(match);
-                    setPrintingPdf(false);
-                  }}
-                  disabled={printingPdf}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm border border-emerald-500/10 cursor-pointer hover:scale-[1.02] active:scale-98"
+                  type="button"
+                  onClick={() => setActiveTab('placares')}
+                  className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                    activeTab === 'placares'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100'
+                  }`}
                 >
-                  <Download className={`h-3 w-3 ${printingPdf ? 'animate-bounce' : ''}`} />
-                  <span>{printingPdf ? 'Gerando...' : 'Baixar PDF de Apostas'}</span>
+                  Placares Apostados
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                    activeTab === 'placares' ? 'bg-white/15 text-slate-200' : 'bg-slate-200/60 text-slate-550'
+                  }`}>
+                    {bets.filter(b => b.status === 'confirmed' || b.userId === user?.uid).length}
+                  </span>
                 </button>
-              )}
-            </h2>
-            
-            {Object.keys(groupedBets).length === 0 ? (
-              <div className="text-slate-400 font-medium text-center py-12">Nenhuma aposta registrada ainda. Seja o primeiro!</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar max-h-[600px] overflow-y-auto pr-2">
-                {sortedScores.map(score => {
-                  const groupBets = groupedBets[score];
-                  const numConfirmed = groupBets.filter(b => b.status === 'confirmed').length;
-                  const currentPrizePerPerson = numConfirmed > 0 ? ((match.poolTotal * 0.9) / numConfirmed).toFixed(2) : '0.00';
-                  
-                  const [pred1, pred2] = score.split('x').map(Number);
-                  const isStarted = new Date(match.date).getTime() <= Date.now();
-                  const isImpossible = isStarted && match.status !== 'finished' && (
-                    pred1 < l1 || pred2 < l2
-                  );
-                  const isWinning = isStarted && match.status !== 'finished' && (
-                    pred1 === l1 && pred2 === l2
-                  );
-                  
-                  return (
-                    <div 
-                      key={score} 
-                      className={`border rounded-2xl overflow-hidden shadow-sm hover:shadow transition-all ${
-                        isImpossible 
-                          ? 'bg-slate-100/60 border-slate-205/50 opacity-40 grayscale pointer-events-none' 
-                          : isWinning
-                            ? 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-white border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500 ring-offset-2 animate-pulse'
-                            : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className={`px-5 py-3.5 flex justify-between items-center border-b transition-colors ${
-                        isWinning 
-                          ? 'bg-emerald-500/20 border-emerald-500/30' 
-                          : 'bg-slate-100/75 border-slate-200/50'
-                      }`}>
-                        <div className="flex items-center gap-2.5">
-                          {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
-                            <img src={match.flag1} alt={match.team1} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
-                          ) : (
-                            <span className="text-xl">{match.flag1}</span>
-                          )}
-                          <div className={`font-mono text-2xl font-bold ${
-                            isImpossible 
-                              ? 'text-slate-450 line-through' 
-                              : isWinning 
-                                ? 'text-emerald-700 font-extrabold scale-105 transition-transform' 
-                                : 'text-slate-800'
-                          }`}>
-                            {score.replace('x', ' - ')}
-                          </div>
-                          {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
-                            <img src={match.flag2} alt={match.team2} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
-                          ) : (
-                            <span className="text-xl">{match.flag2}</span>
-                          )}
+                
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('minuto_certo')}
+                  className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                    activeTab === 'minuto_certo'
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/10'
+                      : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Minuto Certo
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                    activeTab === 'minuto_certo' ? 'bg-white/15 text-slate-200' : 'bg-slate-200/60 text-slate-550'
+                  }`}>
+                    {minutoTickets.length}
+                  </span>
+                </button>
+              </div>
 
-                          {isStarted && match.status !== 'finished' && (
-                            <div className="ml-1 shrink-0">
-                              {isImpossible ? (
-                                <span className="text-[8px] bg-red-105 text-red-700 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-red-200">
-                                  Inviável
+              <div className="flex flex-col items-end gap-1.5 self-start md:self-center">
+                {/* Special France vs Spain Info */}
+                {match && (
+                  (match.team1.toLowerCase().includes('fran') && match.team2.toLowerCase().includes('espa')) ||
+                  (match.team1.toLowerCase().includes('espa') && match.team2.toLowerCase().includes('fran'))
+                ) && (
+                  <p className="text-[10px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-250 px-3 py-1 rounded-xl tracking-wider text-center">
+                    PALPITES PENDENTES APROVADOS AS 14:51. 19 palpites
+                  </p>
+                )}
+
+                {match && (match.status !== 'open' || (new Date(match.date).getTime() - Date.now() < 30 * 60 * 1000) || isBrasilHaiti) && (
+                  <button
+                    onClick={async () => {
+                      if (printingPdf) return;
+
+                      if (!isBrasilHaiti) {
+                        const matchTime = new Date(match.date).getTime();
+                        const closingTime = matchTime - 30 * 60 * 1000;
+                        const pdfAvailableTime = closingTime + 15 * 60 * 1000;
+                        const nowTime = Date.now();
+                        
+                        if (nowTime < pdfAvailableTime) {
+                          const diffMs = pdfAvailableTime - nowTime;
+                          const totalSeconds = Math.ceil(diffMs / 1000);
+                          const minutes = Math.floor(totalSeconds / 60);
+                          const seconds = totalSeconds % 60;
+                          const remainingText = minutes > 0 ? `${minutes} min e ${seconds} seg` : `${seconds} seg`;
+                          showToast(`O PDF de apostas estará disponível 15 minutos após o encerramento das apostas (faltam ${remainingText}).`, 'warning');
+                          return;
+                        }
+                      }
+
+                      setPrintingPdf(true);
+                      await generateMatchBetsPDF(match);
+                      setPrintingPdf(false);
+                    }}
+                    disabled={printingPdf}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm border border-emerald-500/10 cursor-pointer hover:scale-[1.02] active:scale-98"
+                  >
+                    <Download className={`h-3 w-3 ${printingPdf ? 'animate-bounce' : ''}`} />
+                    <span>{printingPdf ? 'Gerando...' : 'Baixar PDF de Apostas'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Content Switch */}
+            {activeTab === 'minuto_certo' ? (
+              !minutoDraw ? (
+                <div className="text-slate-400 font-medium text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-3">
+                  <Clock className="h-8 w-8 text-slate-350 animate-pulse" />
+                  <p className="text-sm font-semibold text-slate-600">Nenhum sorteio de Minuto Certo ativo para esta partida.</p>
+                  <p className="text-xs text-slate-400 max-w-sm">Fale com o administrador para criar um sorteio de Minuto Certo associado a este jogo.</p>
+                </div>
+              ) : (
+                <div>
+                  {/* Live Timer Info Card */}
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-amber-100 border border-amber-300 p-2.5 rounded-xl text-amber-700">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-display font-bold text-slate-800 text-sm">Sorteio do Minuto Certo</h4>
+                        <p className="text-slate-500 text-xs font-medium mt-0.5">
+                          Aposta: R$ {minutoDraw.price.toFixed(2)} | Prêmio Fixo: <strong className="text-emerald-700">R$ {minutoDraw.prize.toFixed(2)}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm font-mono text-sm">
+                      <span className="text-slate-400 font-bold uppercase text-[10px]">Cronômetro:</span>
+                      <span className="font-black text-amber-600 text-base">{formatTimerValue(match.timerValue || 0)}'</span>
+                      <span className="text-slate-500 text-xs font-bold">({getMinutePeriod(match.timerValue || 0)})</span>
+                    </div>
+                  </div>
+
+                  {/* Tickets list */}
+                  {minutoTickets.length === 0 ? (
+                    <div className="text-slate-400 font-medium text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                      Nenhum bilhete do Minuto Certo comprado para este jogo ainda.
+                    </div>
+                  ) : (() => {
+                    const timerVal = match.timerValue || 0;
+                    const sortedTickets = [...minutoTickets].sort((a, b) => a.minuteValue - b.minuteValue);
+                    
+                    const filteredTickets = sortedTickets.filter(t => {
+                      const searchLower = minutoSearch.toLowerCase().trim();
+                      if (!searchLower) return true;
+                      return t.userName.toLowerCase().includes(searchLower) || t.minuteLabel.includes(searchLower);
+                    });
+
+                    return (
+                      <div className="space-y-3">
+                        {/* Search Bar for Minuto Certo */}
+                        <div className="relative mb-1">
+                          <input
+                            type="text"
+                            value={minutoSearch}
+                            onChange={(e) => setMinutoSearch(e.target.value)}
+                            placeholder="Pesquisar por apostador ou minuto (ex: Allan, 45)..."
+                            className="w-full bg-slate-50 border border-slate-250 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-4 pr-16 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all placeholder:text-slate-400"
+                          />
+                          {minutoSearch && (
+                            <button
+                              onClick={() => setMinutoSearch('')}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 text-[10px] font-black uppercase tracking-wider"
+                            >
+                              Limpar
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                          <span>Minuto Apostado</span>
+                          <span>Apostador</span>
+                          <span>Status</span>
+                        </div>
+                        
+                        <div className="overflow-y-auto max-h-[450px] pr-2 custom-scrollbar space-y-2.5">
+                          {filteredTickets.map((ticket) => {
+                            const isPast = ticket.minuteValue < timerVal;
+                            const isActive = ticket.minuteValue === timerVal;
+                            
+                            let statusLabel = "Aguardando";
+                            let bgClass = "bg-white border border-slate-200/70 hover:border-slate-300";
+                            let textClass = "text-slate-800 font-semibold";
+                            
+                            if (isPast) {
+                              statusLabel = "Passou";
+                              bgClass = "bg-slate-50/70 text-slate-450 border border-slate-200/40 opacity-75";
+                              textClass = "text-slate-500 font-medium";
+                            } else if (isActive) {
+                              statusLabel = "🎯 ATIVO!";
+                              bgClass = "bg-amber-50/80 border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-md animate-pulse";
+                              textClass = "text-amber-850 font-black";
+                            }
+
+                            return (
+                              <div 
+                                key={ticket.id}
+                                id={isActive ? 'active-minute-ticket' : undefined}
+                                className={`flex items-center justify-between p-3.5 rounded-2xl transition-all duration-300 ${bgClass}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className={`font-mono text-xs font-black px-3 py-1.5 rounded-xl border ${
+                                    isActive 
+                                      ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-sm' 
+                                      : isPast 
+                                        ? 'bg-slate-200 text-slate-500 border-slate-300' 
+                                        : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                                  }`}>
+                                    {ticket.minuteLabel}'
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 uppercase font-bold hidden sm:inline">
+                                    ({getMinutePeriod(ticket.minuteValue)})
+                                  </span>
+                                </div>
+                                
+                                <div className={`${textClass} text-sm flex items-center gap-2`}>
+                                  <User className={`h-4 w-4 shrink-0 ${isPast ? 'text-slate-400' : isActive ? 'text-amber-600' : 'text-indigo-500'}`} />
+                                  <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                                    {ticket.userName} {ticket.userId === user?.uid ? '(Você)' : ''}
+                                  </span>
+                                </div>
+                                
+                                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md ${
+                                  isActive 
+                                    ? 'bg-amber-500 text-slate-950 shadow-sm' 
+                                    : isPast 
+                                      ? 'bg-slate-200 text-slate-450' 
+                                      : 'bg-indigo-105 text-indigo-700 border border-indigo-200/50'
+                                }`}>
+                                  {statusLabel}
                                 </span>
-                              ) : isWinning ? (
-                                <span className="text-[9px] bg-emerald-600 text-white px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-emerald-700 shadow-sm animate-bounce inline-flex items-center gap-1">
-                                  🎯 Acertando!
-                                </span>
-                              ) : (
-                                <span className="text-[8px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-200 animate-pulse">
-                                  Vivo
-                                </span>
-                              )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <p className="text-[10px] text-center text-slate-400 font-medium mt-4">
+                          Mostrando {filteredTickets.length} minutos comprados. A lista rola automaticamente para focar o minuto ativo.
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )
+            ) : (
+              /* PLACARES APOSTADOS TAB CONTENT */
+              Object.keys(groupedBets).length === 0 ? (
+                <div className="text-slate-400 font-medium text-center py-12">Nenhuma aposta registrada ainda. Seja o primeiro!</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar max-h-[600px] overflow-y-auto pr-2">
+                  {sortedScores.map(score => {
+                    const groupBets = groupedBets[score];
+                    const numConfirmed = groupBets.filter(b => b.status === 'confirmed').length;
+                    const currentPrizePerPerson = numConfirmed > 0 ? ((match.poolTotal * 0.9) / numConfirmed).toFixed(2) : '0.00';
+                    
+                    const [pred1, pred2] = score.split('x').map(Number);
+                    const isStarted = new Date(match.date).getTime() <= Date.now();
+                    const isImpossible = isStarted && match.status !== 'finished' && (
+                      pred1 < l1 || pred2 < l2
+                    );
+                    const isWinning = isStarted && match.status !== 'finished' && (
+                      pred1 === l1 && pred2 === l2
+                    );
+                    
+                    return (
+                      <div 
+                        key={score} 
+                        className={`border rounded-2xl overflow-hidden shadow-sm hover:shadow transition-all ${
+                          isImpossible 
+                            ? 'bg-slate-100/60 border-slate-250/50 opacity-40 grayscale pointer-events-none' 
+                            : isWinning
+                              ? 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-white border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500 ring-offset-2 animate-pulse'
+                              : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`px-5 py-3.5 flex justify-between items-center border-b transition-colors ${
+                          isWinning 
+                            ? 'bg-emerald-500/20 border-emerald-500/30' 
+                            : 'bg-slate-100/75 border-slate-200/50'
+                        }`}>
+                          <div className="flex items-center gap-2.5">
+                            {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
+                              <img src={match.flag1} alt={match.team1} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                            ) : (
+                              <span className="text-xl">{match.flag1}</span>
+                            )}
+                            <div className={`font-mono text-2xl font-bold ${
+                              isImpossible 
+                                ? 'text-slate-450 line-through' 
+                                : isWinning 
+                                  ? 'text-emerald-700 font-extrabold scale-105 transition-transform' 
+                                  : 'text-slate-800'
+                            }`}>
+                              {score.replace('x', ' - ')}
+                            </div>
+                            {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
+                              <img src={match.flag2} alt={match.team2} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                            ) : (
+                              <span className="text-xl">{match.flag2}</span>
+                            )}
+
+                            {isStarted && match.status !== 'finished' && (
+                              <div className="ml-1 shrink-0">
+                                {isImpossible ? (
+                                  <span className="text-[8px] bg-red-105 text-red-700 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-red-200">
+                                    Inviável
+                                  </span>
+                                ) : isWinning ? (
+                                  <span className="text-[9px] bg-emerald-600 text-white px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-emerald-700 shadow-sm animate-bounce inline-flex items-center gap-1">
+                                    🎯 Acertando!
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-200 animate-pulse">
+                                    Vivo
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {isImpossible ? (
+                            <div className="text-[10px] font-bold text-slate-500 bg-slate-200/60 border border-slate-300 px-2.5 py-1 rounded-md flex flex-col items-end">
+                              <span className="text-[8px] text-slate-450 uppercase font-black">Resultado</span>
+                              Eliminado
+                            </div>
+                          ) : isWinning ? (
+                            <div className="text-xs font-black text-white bg-emerald-600 border border-emerald-700 px-3 py-1.5 rounded-lg flex flex-col items-end shadow-sm animate-pulse">
+                              <span className="text-[9px] text-emerald-100 uppercase font-bold mb-0.5">{match.isPromotional ? 'Pontos' : 'Retorno'}</span>
+                              {match.isPromotional ? '+ Pontos' : `R$ ${currentPrizePerPerson}`}
+                            </div>
+                          ) : !match.isPromotional ? (
+                            <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
+                               <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
+                              R$ {currentPrizePerPerson}
+                            </div>
+                          ) : (
+                            <div className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
+                               <span className="text-[9px] text-indigo-500/75 uppercase font-bold mb-0.5">PONTOS DE LIGA</span>
+                               + Pontos
                             </div>
                           )}
                         </div>
-                        {isImpossible ? (
-                          <div className="text-[10px] font-bold text-slate-500 bg-slate-200/60 border border-slate-300 px-2.5 py-1 rounded-md flex flex-col items-end">
-                            <span className="text-[8px] text-slate-450 uppercase font-black">Resultado</span>
-                            Eliminado
-                          </div>
-                        ) : isWinning ? (
-                          <div className="text-xs font-black text-white bg-emerald-600 border border-emerald-700 px-3 py-1.5 rounded-lg flex flex-col items-end shadow-sm animate-pulse">
-                            <span className="text-[9px] text-emerald-100 uppercase font-bold mb-0.5">{match.isPromotional ? 'Pontos' : 'Retorno'}</span>
-                            {match.isPromotional ? '+ Pontos' : `R$ ${currentPrizePerPerson}`}
-                          </div>
-                        ) : !match.isPromotional ? (
-                          <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
-                             <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
-                            R$ {currentPrizePerPerson}
-                          </div>
-                        ) : (
-                          <div className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
-                             <span className="text-[9px] text-indigo-500/75 uppercase font-bold mb-0.5">PONTOS DE LIGA</span>
-                             + Pontos
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4 flex flex-wrap gap-2">
-                        {groupBets.map(bet => (
-                           <div 
-                             key={bet.id} 
-                             className={`text-xs px-2.5 py-1.5 rounded-md flex items-center space-x-2 border transition-colors ${
-                               isWinning
-                                 ? bet.userId === user?.uid 
-                                   ? 'bg-emerald-650 text-white border-emerald-700 font-semibold' 
-                                   : 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium'
-                                 : bet.userId === user?.uid 
-                                   ? 'bg-emerald-50 border-emerald-200' 
-                                   : 'bg-white border-slate-200/60'
-                             }`}
-                           >
-                             {bet.status === 'confirmed' ? (
-                               <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${
+                        <div className="p-4 flex flex-wrap gap-2">
+                          {groupBets.map(bet => (
+                             <div 
+                               key={bet.id} 
+                               className={`text-xs px-2.5 py-1.5 rounded-md flex items-center space-x-2 border transition-colors ${
                                  isWinning
-                                   ? bet.userId === user?.uid ? 'text-white' : 'text-emerald-600'
-                                   : bet.userId === user?.uid ? 'text-emerald-600' : 'text-emerald-400'
-                               }`} />
-                             ) : (
-                               <Clock className="h-3.5 w-3.5 text-orange-500 shrink-0" title="Aposta Pendente" />
-                             )}
-                             <span className={`font-semibold ${
-                               isWinning 
-                                 ? bet.userId === user?.uid ? 'text-white font-extrabold' : 'text-emerald-950'
-                                 : bet.userId === user?.uid ? 'text-emerald-950 font-bold' : 'text-slate-650'
-                             }`}>
-                               {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-500 text-[10px] font-bold uppercase ml-1">(Pendente)</span> : ''}
-                             </span>
-                           </div>
-                        ))}
+                                   ? bet.userId === user?.uid 
+                                     ? 'bg-emerald-650 text-white border-emerald-700 font-semibold' 
+                                     : 'bg-emerald-50 border-emerald-200 text-emerald-900 font-medium'
+                                   : bet.userId === user?.uid 
+                                     ? 'bg-emerald-50 border-emerald-200' 
+                                     : 'bg-white border-slate-200/60'
+                               }`}
+                             >
+                               {bet.status === 'confirmed' ? (
+                                 <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${
+                                   isWinning
+                                     ? bet.userId === user?.uid ? 'text-white' : 'text-emerald-600'
+                                     : bet.userId === user?.uid ? 'text-emerald-600' : 'text-emerald-400'
+                                 }`} />
+                               ) : (
+                                 <Clock className="h-3.5 w-3.5 text-orange-500 shrink-0" title="Aposta Pendente" />
+                               )}
+                               <span className={`font-semibold ${
+                                 isWinning 
+                                   ? bet.userId === user?.uid ? 'text-white font-extrabold' : 'text-emerald-950'
+                                   : bet.userId === user?.uid ? 'text-emerald-950 font-bold' : 'text-slate-650'
+                               }`}>
+                                 {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-500 text-[10px] font-bold uppercase ml-1">(Pendente)</span> : ''}
+                               </span>
+                             </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </div>
         </div>

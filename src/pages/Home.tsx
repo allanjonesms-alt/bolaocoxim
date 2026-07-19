@@ -75,10 +75,8 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-       setShowMinutoPromo(true);
-    }, 1200);
-     return () => clearTimeout(timer);
+    // Hidden as per user request to hide the pop-up do minuto certo
+    setShowMinutoPromo(false);
   }, []);
 
   const closePromo = () => {
