@@ -26,7 +26,6 @@ export default function MatchDetails() {
   const [activeTab, setActiveTab] = useState<'placares' | 'minuto_certo'>('placares');
   const [minutoDraw, setMinutoDraw] = useState<MinutoCertoDraw | null>(null);
   const [minutoTickets, setMinutoTickets] = useState<MinutoCertoTicket[]>([]);
-  const [minutoSearch, setMinutoSearch] = useState<string>('');
 
   useEffect(() => {
     const fetchLiveMatches = async () => {
@@ -1012,7 +1011,7 @@ export default function MatchDetails() {
 
         {/* Existing Bets / Minuto Certo */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8">
+          <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-6">
             {/* Header / Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 mb-6">
               <div className="flex flex-wrap items-center gap-2">
@@ -1036,19 +1035,14 @@ export default function MatchDetails() {
                 <button
                   type="button"
                   onClick={() => setActiveTab('minuto_certo')}
-                  className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-2xl font-display font-black text-xs transition-all flex items-center gap-2 cursor-pointer border ${
                     activeTab === 'minuto_certo'
-                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/10'
-                      : 'bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100'
+                      ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 border-amber-600 shadow-md shadow-amber-500/35 font-extrabold scale-102'
+                      : 'bg-amber-50 border-amber-350 text-amber-700 hover:bg-amber-100/90 shadow-sm shadow-amber-100/50 hover:border-amber-400'
                   }`}
                 >
-                  <Clock className="h-3.5 w-3.5" />
+                  <Clock className={`h-3.5 w-3.5 ${activeTab === 'minuto_certo' ? 'text-slate-950' : 'text-amber-600'}`} />
                   Minuto Certo
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === 'minuto_certo' ? 'bg-white/15 text-slate-200' : 'bg-slate-200/60 text-slate-550'
-                  }`}>
-                    {minutoTickets.length}
-                  </span>
                 </button>
               </div>
 
@@ -1139,41 +1133,30 @@ export default function MatchDetails() {
                     const timerVal = match.timerValue || 0;
                     const sortedTickets = [...minutoTickets].sort((a, b) => a.minuteValue - b.minuteValue);
                     
-                    const filteredTickets = sortedTickets.filter(t => {
-                      const searchLower = minutoSearch.toLowerCase().trim();
-                      if (!searchLower) return true;
-                      return t.userName.toLowerCase().includes(searchLower) || t.minuteLabel.includes(searchLower);
-                    });
-
-                    // Only show upcoming/active tickets (at most 5), or last 5 past tickets if no upcoming remain
-                    let visibleTickets = filteredTickets.filter(t => t.minuteValue >= timerVal);
-                    if (visibleTickets.length === 0) {
-                      visibleTickets = filteredTickets.slice(-5);
-                    } else {
-                      visibleTickets = visibleTickets.slice(0, 5);
+                    // Find the ticket closest to the current timerVal
+                    let closestIdx = 0;
+                    let minDiff = Infinity;
+                    for (let i = 0; i < sortedTickets.length; i++) {
+                      const diff = Math.abs(sortedTickets[i].minuteValue - timerVal);
+                      if (diff < minDiff) {
+                        minDiff = diff;
+                        closestIdx = i;
+                      }
                     }
+
+                    // Try to place the closest ticket in the middle (index 2 of 5)
+                    let startIdx = closestIdx - 2;
+                    if (startIdx < 0) {
+                      startIdx = 0;
+                    }
+                    if (startIdx + 5 > sortedTickets.length) {
+                      startIdx = Math.max(0, sortedTickets.length - 5);
+                    }
+
+                    const visibleTickets = sortedTickets.slice(startIdx, startIdx + 5);
 
                     return (
                       <div className="space-y-3">
-                        {/* Search Bar for Minuto Certo */}
-                        <div className="relative mb-1">
-                          <input
-                            type="text"
-                            value={minutoSearch}
-                            onChange={(e) => setMinutoSearch(e.target.value)}
-                            placeholder="Pesquisar por apostador ou minuto (ex: Allan, 45)..."
-                            className="w-full bg-slate-50 border border-slate-250 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl pl-4 pr-16 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all placeholder:text-slate-400"
-                          />
-                          {minutoSearch && (
-                            <button
-                              onClick={() => setMinutoSearch('')}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 text-[10px] font-black uppercase tracking-wider"
-                            >
-                              Limpar
-                            </button>
-                          )}
-                        </div>
-
                         <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
                           <span>Minuto Apostado</span>
                           <span>Apostador</span>
@@ -1185,16 +1168,16 @@ export default function MatchDetails() {
                             const isPast = ticket.minuteValue < timerVal;
                             const isActive = ticket.minuteValue === timerVal;
                             
-                            let statusLabel = "Aguardando";
+                            let statusLabel = "aguardando";
                             let bgClass = "bg-white border border-slate-200/70 hover:border-slate-300";
                             let textClass = "text-slate-800 font-semibold";
                             
                             if (isPast) {
-                              statusLabel = "Passou";
+                              statusLabel = "perdeu";
                               bgClass = "bg-slate-50/70 text-slate-450 border border-slate-200/40 opacity-75";
                               textClass = "text-slate-500 font-medium";
                             } else if (isActive) {
-                              statusLabel = "🎯 ATIVO!";
+                              statusLabel = "vencendo";
                               bgClass = "bg-amber-50/80 border-2 border-amber-400 ring-2 ring-amber-400/20 shadow-md animate-pulse";
                               textClass = "text-amber-850 font-black";
                             }
@@ -1240,10 +1223,6 @@ export default function MatchDetails() {
                             );
                           })}
                         </div>
-
-                        <p className="text-[10px] text-center text-slate-400 font-medium mt-4">
-                          Mostrando os próximos minutos do jogo (máximo 5).
-                        </p>
                       </div>
                     );
                   })()}
@@ -1254,7 +1233,7 @@ export default function MatchDetails() {
               Object.keys(groupedBets).length === 0 ? (
                 <div className="text-slate-400 font-medium text-center py-12">Nenhuma aposta registrada ainda. Seja o primeiro!</div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar max-h-[600px] overflow-y-auto pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 custom-scrollbar max-h-[600px] overflow-y-auto pr-2">
                   {sortedScores.map(score => {
                     const groupBets = groupedBets[score];
                     const numConfirmed = groupBets.filter(b => b.status === 'confirmed').length;
@@ -1272,7 +1251,7 @@ export default function MatchDetails() {
                     return (
                       <div 
                         key={score} 
-                        className={`border rounded-2xl overflow-hidden shadow-sm hover:shadow transition-all ${
+                        className={`border rounded-xl overflow-hidden shadow-sm hover:shadow transition-all ${
                           isImpossible 
                             ? 'bg-slate-100/60 border-slate-250/50 opacity-40 grayscale pointer-events-none' 
                             : isWinning
@@ -1280,44 +1259,44 @@ export default function MatchDetails() {
                               : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
                         }`}
                       >
-                        <div className={`px-5 py-3.5 flex justify-between items-center border-b transition-colors ${
+                        <div className={`px-3.5 py-2 flex justify-between items-center border-b transition-colors ${
                           isWinning 
                             ? 'bg-emerald-500/20 border-emerald-500/30' 
                             : 'bg-slate-100/75 border-slate-200/50'
                         }`}>
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2">
                             {match.flag1?.startsWith('http') || match.flag1?.startsWith('data:') ? (
-                              <img src={match.flag1} alt={match.team1} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                              <img src={match.flag1} alt={match.team1} className="w-6.5 h-4 object-cover rounded-sm shadow-sm" />
                             ) : (
-                              <span className="text-xl">{match.flag1}</span>
+                              <span className="text-lg">{match.flag1}</span>
                             )}
-                            <div className={`font-mono text-2xl font-bold ${
+                            <div className={`font-mono text-xl font-bold ${
                               isImpossible 
                                 ? 'text-slate-450 line-through' 
                                 : isWinning 
-                                  ? 'text-emerald-700 font-extrabold scale-105 transition-transform' 
+                                  ? 'text-emerald-700 font-extrabold scale-102 transition-transform' 
                                   : 'text-slate-800'
                             }`}>
                               {score.replace('x', ' - ')}
                             </div>
                             {match.flag2?.startsWith('http') || match.flag2?.startsWith('data:') ? (
-                              <img src={match.flag2} alt={match.team2} className="w-8 h-5 object-cover rounded-sm shadow-sm" />
+                              <img src={match.flag2} alt={match.team2} className="w-6.5 h-4 object-cover rounded-sm shadow-sm" />
                             ) : (
-                              <span className="text-xl">{match.flag2}</span>
+                              <span className="text-lg">{match.flag2}</span>
                             )}
 
                             {isStarted && match.status !== 'finished' && (
-                              <div className="ml-1 shrink-0">
+                              <div className="ml-0.5 shrink-0">
                                 {isImpossible ? (
-                                  <span className="text-[8px] bg-red-105 text-red-700 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-red-200">
+                                  <span className="text-[8px] bg-red-105 text-red-700 px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider border border-red-200">
                                     Inviável
                                   </span>
                                 ) : isWinning ? (
-                                  <span className="text-[9px] bg-emerald-600 text-white px-2.5 py-1 rounded-full font-black uppercase tracking-wider border border-emerald-700 shadow-sm animate-bounce inline-flex items-center gap-1">
+                                  <span className="text-[8px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-700 shadow-sm animate-bounce inline-flex items-center gap-0.5">
                                     🎯 Acertando!
                                   </span>
                                 ) : (
-                                  <span className="text-[8px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-200 animate-pulse">
+                                  <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider border border-emerald-200 animate-pulse">
                                     Vivo
                                   </span>
                                 )}
@@ -1325,32 +1304,32 @@ export default function MatchDetails() {
                             )}
                           </div>
                           {isImpossible ? (
-                            <div className="text-[10px] font-bold text-slate-500 bg-slate-200/60 border border-slate-300 px-2.5 py-1 rounded-md flex flex-col items-end">
+                            <div className="text-[9px] font-bold text-slate-500 bg-slate-200/60 border border-slate-300 px-2 py-0.5 rounded flex flex-col items-end">
                               <span className="text-[8px] text-slate-450 uppercase font-black">Resultado</span>
                               Eliminado
                             </div>
                           ) : isWinning ? (
-                            <div className="text-xs font-black text-white bg-emerald-600 border border-emerald-700 px-3 py-1.5 rounded-lg flex flex-col items-end shadow-sm animate-pulse">
-                              <span className="text-[9px] text-emerald-100 uppercase font-bold mb-0.5">{match.isPromotional ? 'Pontos' : 'Retorno'}</span>
+                            <div className="text-[11px] font-black text-white bg-emerald-600 border border-emerald-700 px-2 py-1 rounded flex flex-col items-end shadow-sm animate-pulse">
+                              <span className="text-[8px] text-emerald-100 uppercase font-bold mb-0.5">{match.isPromotional ? 'Pontos' : 'Retorno'}</span>
                               {match.isPromotional ? '+ Pontos' : `R$ ${currentPrizePerPerson}`}
                             </div>
                           ) : !match.isPromotional ? (
-                            <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
-                               <span className="text-[9px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
+                            <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded flex flex-col items-end">
+                               <span className="text-[8px] text-emerald-500/75 uppercase font-bold mb-0.5">Retorno</span>
                               R$ {currentPrizePerPerson}
                             </div>
                           ) : (
-                            <div className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg flex flex-col items-end">
-                               <span className="text-[9px] text-indigo-500/75 uppercase font-bold mb-0.5">PONTOS DE LIGA</span>
+                            <div className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded flex flex-col items-end">
+                               <span className="text-[8px] text-indigo-500/75 uppercase font-bold mb-0.5">PONTOS</span>
                                + Pontos
                             </div>
                           )}
                         </div>
-                        <div className="p-4 flex flex-wrap gap-2">
+                        <div className="p-2.5 flex flex-wrap gap-1.5">
                           {groupBets.map(bet => (
                              <div 
                                key={bet.id} 
-                               className={`text-xs px-2.5 py-1.5 rounded-md flex items-center space-x-2 border transition-colors ${
+                               className={`text-[11px] px-2 py-1 rounded-md flex items-center space-x-1.5 border transition-colors ${
                                  isWinning
                                    ? bet.userId === user?.uid 
                                      ? 'bg-emerald-650 text-white border-emerald-700 font-semibold' 
@@ -1361,20 +1340,20 @@ export default function MatchDetails() {
                                }`}
                              >
                                {bet.status === 'confirmed' ? (
-                                 <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${
+                                 <CheckCircle2 className={`h-3 w-3 shrink-0 ${
                                    isWinning
                                      ? bet.userId === user?.uid ? 'text-white' : 'text-emerald-600'
                                      : bet.userId === user?.uid ? 'text-emerald-600' : 'text-emerald-400'
                                  }`} />
                                ) : (
-                                 <Clock className="h-3.5 w-3.5 text-orange-500 shrink-0" title="Aposta Pendente" />
+                                 <Clock className="h-3 w-3 text-orange-500 shrink-0" title="Aposta Pendente" />
                                )}
                                <span className={`font-semibold ${
                                  isWinning 
                                    ? bet.userId === user?.uid ? 'text-white font-extrabold' : 'text-emerald-950'
                                    : bet.userId === user?.uid ? 'text-emerald-950 font-bold' : 'text-slate-650'
                                }`}>
-                                 {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-500 text-[10px] font-bold uppercase ml-1">(Pendente)</span> : ''}
+                                 {bet.userName} {bet.userId === user?.uid ? '(Você)' : ''} {bet.status === 'pending' ? <span className="text-orange-500 text-[9px] font-bold uppercase ml-0.5">(Pend)</span> : ''}
                                </span>
                              </div>
                           ))}

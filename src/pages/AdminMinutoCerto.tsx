@@ -139,6 +139,58 @@ export default function AdminMinutoCerto() {
     }
   };
 
+  // Handle Delete Sold Ticket
+  const handleDeleteTicket = async (ticket: MinutoCertoTicket) => {
+    const ticketPrice = ticket.price || 2;
+    if (!window.confirm(`Tem certeza de que deseja excluir o bilhete do minuto ${ticket.minuteLabel} de ${ticket.userName}? R$ ${ticketPrice.toFixed(2)} serão reembolsados ao saldo do apostador.`)) {
+      return;
+    }
+
+    try {
+      const drawInfo = draws.find(d => d.id === ticket.drawId);
+      const drawName = drawInfo ? drawInfo.matchName : 'Sorteio';
+
+      await runTransaction(db, async (transaction) => {
+        const ticketRef = doc(db, 'minuto_certo_tickets', ticket.id);
+        const ticketSnap = await transaction.get(ticketRef);
+        if (!ticketSnap.exists()) {
+          throw new Error('Bilhete não encontrado ou já excluído.');
+        }
+
+        const ticketData = ticketSnap.data() as MinutoCertoTicket;
+        const refundAmount = ticketData.price || 2;
+
+        // Refund user
+        const userRef = doc(db, 'users', ticketData.userId);
+        const userSnap = await transaction.get(userRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data() as UserProfile;
+          const currentBalance = userData.balance || 0;
+          transaction.update(userRef, { balance: currentBalance + refundAmount });
+
+          // Create transaction record
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: ticketData.userId,
+            type: 'refund',
+            amount: refundAmount,
+            status: 'confirmed',
+            timestamp: serverTimestamp(),
+            description: `Reembolso de Bilhete Minuto Certo Excluído por Administrador - Minuto: ${ticketData.minuteLabel} (Partida: ${drawName})`
+          });
+        }
+
+        // Delete the ticket
+        transaction.delete(ticketRef);
+      });
+
+      showToast(`Bilhete do minuto ${ticket.minuteLabel} de ${ticket.userName} excluído e reembolsado com sucesso!`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Erro ao excluir o bilhete.', 'error');
+    }
+  };
+
   // Handle Finish Draw and Lançar Vencedor
   const handleFinishDraw = async () => {
     if (!finishingDraw) return;
@@ -563,17 +615,24 @@ export default function AdminMinutoCerto() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {tickets.map(t => (
-                <div key={t.id} className="bg-slate-50 border border-slate-250 rounded-2xl p-4 flex justify-between items-center hover:shadow-sm transition-all">
-                  <div>
+                <div key={t.id} className="bg-slate-50 border border-slate-250 rounded-2xl p-4 flex justify-between items-center hover:shadow-sm transition-all gap-3">
+                  <div className="flex-1 min-w-0">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Apostador</span>
-                    <span className="text-sm font-bold text-slate-800 block truncate max-w-[150px]">{t.userName}</span>
+                    <span className="text-sm font-bold text-slate-800 block truncate" title={t.userName}>{t.userName}</span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">Minuto Escolhido</span>
                     <span className="inline-flex items-center gap-1 bg-white text-indigo-900 border border-indigo-150 font-mono font-extrabold text-xs px-2 py-0.5 rounded-md mt-0.5 shadow-sm">
                       {t.minuteLabel} min ({getMinutePeriod(t.minuteValue)})
                     </span>
                   </div>
+                  <button
+                    onClick={() => handleDeleteTicket(t)}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer shrink-0"
+                    title="Excluir Bilhete Vendido"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>

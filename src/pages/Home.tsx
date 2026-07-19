@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, doc, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, getDocs, where, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Match, Bet } from '../types';
-import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle, Clock } from 'lucide-react';
+import { Match, Bet, MinutoCertoDraw, MinutoCertoTicket, UserProfile } from '../types';
+import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle, Clock, Sparkles } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { formatMinuteValue } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import MatchCountdown from '../components/MatchCountdown';
 import { generateMatchBetsPDF } from '../utils/pdfGenerator';
@@ -15,6 +17,29 @@ import { motion, AnimatePresence } from 'motion/react';
 // Teste de alteração para verificação de commit no GitHub
 
 export default function Home() {
+  const { user, profile } = useAuth();
+  const [activeMinutoDraws, setActiveMinutoDraws] = useState<MinutoCertoDraw[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [showConvertConfirm, setShowConvertConfirm] = useState(false);
+  const [convertSummary, setConvertSummary] = useState<{
+    currentBalance: number;
+    paidQty: number;
+    freeQty: number;
+    totalQty: number;
+    totalCost: number;
+    remainingBalance: number;
+    targetDrawName: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, 'minuto_certo_draws'), where('status', '==', 'active'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const draws = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MinutoCertoDraw));
+      setActiveMinutoDraws(draws);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [matches, setMatches] = useState<Match[]>(() => {
     try {
       const cached = localStorage.getItem('home_matches_cache');
@@ -72,6 +97,170 @@ export default function Home() {
     const a = m.team2?.toLowerCase() || '';
     return (h.includes('frança') || h.includes('franca') || h.includes('france')) && (a.includes('espanha') || a.includes('spain')) ||
            (h.includes('espanha') || h.includes('spain')) && (a.includes('frança') || a.includes('franca') || a.includes('france'));
+  };
+
+  const handleConvertClick = () => {
+    if (!user || !profile) {
+      showToast("Por favor, faça login para converter seu saldo em minutos!", "error");
+      return;
+    }
+
+    if (activeMinutoDraws.length === 0) {
+      showToast("Nenhum sorteio de Minuto Certo ativo no momento para receber a conversão.", "warning");
+      return;
+    }
+
+    const currentBalance = profile.balance || 0;
+    const paidQty = Math.floor(currentBalance / 2);
+    const freeQty = 2;
+    const totalQty = paidQty + freeQty;
+
+    if (paidQty <= 0) {
+      showToast("Você precisa de pelo menos R$ 2,00 de saldo para converter em minutos.", "error");
+      return;
+    }
+
+    const totalCost = paidQty * 2;
+    const remainingBalance = currentBalance - totalCost;
+    const targetDraw = activeMinutoDraws[0];
+
+    setConvertSummary({
+      currentBalance,
+      paidQty,
+      freeQty,
+      totalQty,
+      totalCost,
+      remainingBalance,
+      targetDrawName: targetDraw.matchName
+    });
+    setShowConvertConfirm(true);
+  };
+
+  const handleConvertBalanceToMinutes = async () => {
+    if (!user || !profile || !convertSummary) {
+      return;
+    }
+
+    setShowConvertConfirm(false);
+    setIsConverting(true);
+
+    const targetDraw = activeMinutoDraws[0];
+
+    try {
+      // 1. Fetch sold tickets for this draw
+      const ticketsSnap = await getDocs(
+        query(collection(db, 'minuto_certo_tickets'), where('drawId', '==', targetDraw.id))
+      );
+      const soldMinutes = ticketsSnap.docs.map(doc => (doc.data() as MinutoCertoTicket).minuteValue);
+
+      // 2. Find available minutes
+      const availableMinutes: number[] = [];
+      for (let i = 1; i <= 100; i++) {
+        if (!soldMinutes.includes(i)) {
+          availableMinutes.push(i);
+        }
+      }
+
+      if (availableMinutes.length === 0) {
+        showToast("Todos os minutos para este sorteio já foram adquiridos!", "error");
+        setIsConverting(false);
+        return;
+      }
+
+      const totalRequestedQty = convertSummary.totalQty;
+      const actualQty = Math.min(totalRequestedQty, availableMinutes.length);
+      const actualPaidQty = Math.max(0, actualQty - convertSummary.freeQty);
+      const totalCost = actualPaidQty * 2;
+
+      const currentBalance = profile.balance || 0;
+      if (currentBalance < 2.00) {
+        showToast("Você precisa de pelo menos R$ 2,00 de saldo para converter em minutos.", "error");
+        setIsConverting(false);
+        return;
+      }
+
+      if (currentBalance < totalCost) {
+        showToast(`Saldo insuficiente para converter. Você precisa de pelo menos R$ ${totalCost.toFixed(2)}.`, "error");
+        setIsConverting(false);
+        return;
+      }
+
+      // 3. Select distinct random minutes from available ones
+      const selectedMinutes: number[] = [];
+      const tempAvailable = [...availableMinutes];
+      for (let i = 0; i < actualQty; i++) {
+        const randomIndex = Math.floor(Math.random() * tempAvailable.length);
+        selectedMinutes.push(tempAvailable[randomIndex]);
+        tempAvailable.splice(randomIndex, 1);
+      }
+
+      // 4. Run Transaction
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+
+        const freshProfile = userSnap.data() as UserProfile;
+        const freshBalance = freshProfile.balance || 0;
+
+        if (freshBalance < 2.00) {
+          throw new Error('Você precisa de no mínimo R$ 2,00 de saldo para poder converter.');
+        }
+
+        if (freshBalance < totalCost) {
+          throw new Error('Saldo insuficiente para a conversão.');
+        }
+
+        const ticketCheckResults = [];
+        for (const m of selectedMinutes) {
+          const tDocId = `${targetDraw.id}_${m}`;
+          const tRef = doc(db, 'minuto_certo_tickets', tDocId);
+          const tSnap = await transaction.get(tRef);
+          if (tSnap.exists()) {
+            throw new Error(`O minuto ${formatMinuteValue(m)} foi adquirido por outro jogador. Tente novamente!`);
+          }
+          ticketCheckResults.push({ ref: tRef, minute: m, label: formatMinuteValue(m) });
+        }
+
+        // Deduct balance
+        const newBalance = freshBalance - totalCost;
+        transaction.update(userRef, { balance: newBalance });
+
+        // Save tickets
+        for (const item of ticketCheckResults) {
+          transaction.set(item.ref, {
+            drawId: targetDraw.id,
+            userId: user.uid,
+            userName: freshProfile.name,
+            minuteValue: item.minute,
+            minuteLabel: item.label,
+            price: targetDraw.price,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        // Create transaction receipt
+        const transRef = doc(collection(db, 'transactions'));
+        const labelsList = [...selectedMinutes].sort((a, b) => a - b).map(m => formatMinuteValue(m)).join(', ');
+        transaction.set(transRef, {
+          userId: user.uid,
+          type: 'bet',
+          amount: -totalCost,
+          status: 'confirmed',
+          timestamp: serverTimestamp(),
+          description: `Conversão de Saldo em Minuto Certo (${actualQty}x, sendo 2 gratuitos) - Minutos: ${labelsList} (Partida: ${targetDraw.matchName})`
+        });
+      });
+
+      const formattedMinutes = [...selectedMinutes].sort((a, b) => a - b).map(m => formatMinuteValue(m)).join(', ');
+      showToast(`Sucesso! Seu saldo de R$ ${currentBalance.toFixed(2)} foi convertido em ${actualQty} minutos (+2 gratuitos): ${formattedMinutes}!`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Erro ao realizar a conversão de saldo.', 'error');
+    } finally {
+      setIsConverting(false);
+      setConvertSummary(null);
+    }
   };
 
   useEffect(() => {
@@ -739,6 +928,20 @@ export default function Home() {
                 </div>
 
                 <div className="w-full space-y-2">
+                  <button
+                    onClick={handleConvertClick}
+                    disabled={isConverting}
+                    className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider py-3.5 px-3 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 flex flex-col items-center justify-center gap-1 border border-emerald-400/30 cursor-pointer w-full text-center group"
+                  >
+                    <span className="flex items-center gap-1.5 justify-center">
+                      <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse shrink-0 group-hover:rotate-12 transition-transform" />
+                      <span>{isConverting ? "Convertendo..." : "CONVERTA SEU SALDO em MINUTOS"}</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-100 font-extrabold normal-case tracking-normal">
+                      Promoção: Ganhe +2 Bilhetes Gratuitos! 🎁
+                    </span>
+                  </button>
+
                   <Link
                     to="/minuto-certo"
                     className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider py-3 rounded-xl transition-all shadow-md shadow-amber-500/10 hover:shadow-lg active:scale-95 flex items-center gap-1.5 border border-amber-400 justify-center text-center w-full"
@@ -1104,6 +1307,97 @@ export default function Home() {
                 <Trophy className="h-3.5 w-3.5" />
                 <span>Adquirir Bilhetes</span>
               </Link>
+            </motion.div>
+          </div>
+        )}
+
+        {showConvertConfirm && convertSummary && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+            {/* Click outside to close */}
+            <div className="absolute inset-0" onClick={() => setShowConvertConfirm(false)} />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-md bg-slate-900 text-slate-100 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col gap-5 p-6 z-10"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+                  <h3 className="text-sm font-black text-emerald-400 uppercase tracking-wider">Confirmar Conversão de Saldo</h3>
+                </div>
+                <button
+                  onClick={() => setShowConvertConfirm(false)}
+                  className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Summary Body */}
+              <div className="space-y-4">
+                <p className="text-xs text-slate-350 leading-relaxed">
+                  Você está prestes a converter seu saldo disponível em bilhetes do sorteio <strong className="text-slate-100">{convertSummary.targetDrawName}</strong> e receber os bilhetes gratuitos promocionais.
+                </p>
+
+                <div className="bg-slate-950/65 rounded-2xl p-4 border border-slate-800/80 space-y-3 font-medium text-xs">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Seu Saldo Atual:</span>
+                    <span className="font-mono font-bold text-slate-100">R$ {convertSummary.currentBalance.toFixed(2)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-slate-400 border-t border-slate-800/55 pt-2.5">
+                    <span>Bilhetes Convertidos (R$ 2,00 cada):</span>
+                    <span className="font-mono font-bold text-slate-100">+{convertSummary.paidQty} un</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-emerald-400 bg-emerald-950/20 px-2 py-1.5 rounded-lg border border-emerald-900/30">
+                    <span className="font-bold flex items-center gap-1">🎁 Promoção Bilhetes Grátis:</span>
+                    <span className="font-mono font-black">+{convertSummary.freeQty} un</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-300 font-bold border-t border-slate-800/55 pt-2.5">
+                    <span>Total de Bilhetes que Receberá:</span>
+                    <span className="font-mono text-sm font-black text-amber-400">{convertSummary.totalQty} Bilhetes</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Custo Total da Conversão:</span>
+                    <span className="font-mono font-bold text-red-400">R$ {convertSummary.totalCost.toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-300 font-bold border-t border-slate-800 pt-2.5">
+                    <span>Saldo Restante Estimado:</span>
+                    <span className="font-mono text-emerald-400">R$ {convertSummary.remainingBalance.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex gap-2.5 items-start">
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-200/90 leading-normal">
+                    <strong>Atenção:</strong> Os minutos/bilhetes correspondentes serão escolhidos aleatoriamente de forma automática entre os números disponíveis no sorteio. Esta ação não poderá ser desfeita.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end mt-2">
+                <button
+                  onClick={() => setShowConvertConfirm(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConvertBalanceToMinutes}
+                  disabled={isConverting}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-colors shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  {isConverting ? "Convertendo..." : "Confirmar Conversão"}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
