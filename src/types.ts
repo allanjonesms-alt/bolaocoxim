@@ -79,6 +79,7 @@ export interface PixPremiadoDraw {
   status: 'active' | 'finished';
   drawnNumbers: string[];
   createdAt: any;
+  observations?: string;
 }
 
 export interface MinutoCertoDraw {
@@ -93,6 +94,7 @@ export interface MinutoCertoDraw {
   createdAt: any;
   price: number;
   prize: number;
+  observations?: string;
 }
 
 export interface MinutoCertoTicket {

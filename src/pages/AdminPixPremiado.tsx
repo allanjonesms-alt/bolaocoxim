@@ -100,11 +100,13 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
     time: string;
     type: 'MegaSena' | 'Loteria Federal';
     status: 'active' | 'finished';
+    observations: string;
   }>({
     date: '',
     time: '',
     type: 'MegaSena',
-    status: 'active'
+    status: 'active',
+    observations: ''
   });
 
   // Toast State
@@ -217,7 +219,7 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
       }
       setShowDrawForm(false);
       setEditingDrawId(null);
-      setDrawForm({ date: '', time: '', type: 'MegaSena', status: 'active' });
+      setDrawForm({ date: '', time: '', type: 'MegaSena', status: 'active', observations: '' });
     } catch (err) {
       showToast('Erro ao salvar sorteio.', 'error');
     }
@@ -228,7 +230,8 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
       date: draw.date,
       time: draw.time,
       type: draw.type,
-      status: draw.status
+      status: draw.status,
+      observations: draw.observations || ''
     });
     setEditingDrawId(draw.id);
     setShowDrawForm(true);
@@ -746,6 +749,17 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
                 </select>
               </div>
             </div>
+            
+            <div className="mb-4">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Observações (Valores de Prêmio, Regras Extras, etc.)</label>
+              <textarea
+                placeholder="Insira detalhes adicionais do prêmio, regras específicas, observações de acumulação ou restrições."
+                value={drawForm.observations}
+                onChange={e => setDrawForm({...drawForm, observations: e.target.value})}
+                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold min-h-[80px]"
+              />
+            </div>
+
             <div className="flex justify-end">
               <button
                 type="submit"
@@ -775,6 +789,11 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
                       <span className="font-bold text-slate-800 text-sm">
                         {draw.date.split('-').reverse().join('/')} às {draw.time}
                       </span>
+                      {draw.observations && (
+                        <div className="text-[10px] text-indigo-600 font-medium max-w-xs mt-1 italic break-words">
+                          Obs: {draw.observations}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3">
                       <span className="font-semibold text-slate-600 text-sm">{draw.type}</span>

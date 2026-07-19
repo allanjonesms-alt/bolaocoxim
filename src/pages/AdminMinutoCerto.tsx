@@ -20,7 +20,8 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
     date: '',
     time: '',
     price: 2,
-    prize: 100
+    prize: 100,
+    observations: ''
   });
 
   // Finish Draw State
@@ -82,7 +83,8 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
           date: drawForm.date,
           time: drawForm.time,
           price: Number(drawForm.price),
-          prize: Number(drawForm.prize)
+          prize: Number(drawForm.prize),
+          observations: drawForm.observations || ''
         }, { merge: true });
         showToast('Sorteio do Minuto Certo atualizado!', 'success');
       } else {
@@ -93,6 +95,7 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
           time: drawForm.time,
           price: Number(drawForm.price),
           prize: Number(drawForm.prize),
+          observations: drawForm.observations || '',
           status: 'active',
           winningMinute: null,
           winnerId: null,
@@ -103,7 +106,7 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
       }
       setShowDrawForm(false);
       setEditingDrawId(null);
-      setDrawForm({ matchName: '', date: '', time: '', price: 2, prize: 100 });
+      setDrawForm({ matchName: '', date: '', time: '', price: 2, prize: 100, observations: '' });
     } catch (err) {
       showToast('Erro ao salvar o sorteio.', 'error');
     }
@@ -116,7 +119,8 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
       date: draw.date,
       time: draw.time,
       price: draw.price,
-      prize: draw.prize
+      prize: draw.prize,
+      observations: draw.observations || ''
     });
     setEditingDrawId(draw.id);
     setShowDrawForm(true);
@@ -444,6 +448,16 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
                 required
               />
             </div>
+
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Observações (Valores de Prêmio, Regras Extras, etc.)</label>
+              <textarea
+                placeholder="Insira detalhes adicionais do prêmio, regras específicas, observações de acumulação ou restrições."
+                value={drawForm.observations}
+                onChange={e => setDrawForm({ ...drawForm, observations: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/25 outline-none text-slate-800 text-sm font-semibold min-h-[100px]"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 border-t border-slate-50 pt-4">
@@ -561,6 +575,11 @@ export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomp
                   >
                     <td className="py-4 px-2">
                       <div className="font-bold text-slate-800 text-sm">{draw.matchName}</div>
+                      {draw.observations && (
+                        <div className="text-[10px] text-indigo-600 font-medium max-w-xs mt-1 italic break-words">
+                          Obs: {draw.observations}
+                        </div>
+                      )}
                     </td>
                     <td className="py-4">
                       <span className="text-slate-600 text-sm font-semibold">

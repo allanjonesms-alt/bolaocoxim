@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, onSnapshot, doc, getDocs, where, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, getDocs, where, runTransaction, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Match, Bet, MinutoCertoDraw, MinutoCertoTicket, UserProfile } from '../types';
+import { Match, Bet, MinutoCertoDraw, MinutoCertoTicket, UserProfile, PixPremiadoDraw, PixPremiadoGame } from '../types';
 import { Trophy, CalendarClock, ChevronRight, CheckCircle2, Lock, Radio, Flame, Crown, Calendar, Lightbulb, AlertCircle, Download, FileText, Medal, CircleDollarSign, X, AlertTriangle, Clock, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatMinuteValue } from '../lib/utils';
@@ -19,6 +19,11 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function Home() {
   const { user, profile } = useAuth();
   const [activeMinutoDraws, setActiveMinutoDraws] = useState<MinutoCertoDraw[]>([]);
+  const [activePixDraws, setActivePixDraws] = useState<PixPremiadoDraw[]>([]);
+  const [isPurchasingPix, setIsPurchasingPix] = useState(false);
+  const [pixTicketCount, setPixTicketCount] = useState('1');
+  const [recentBoughtTickets, setRecentBoughtTickets] = useState<any[]>([]);
+  const [showPixBoughtModal, setShowPixBoughtModal] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
   const [convertSummary, setConvertSummary] = useState<{
@@ -36,6 +41,15 @@ export default function Home() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const draws = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MinutoCertoDraw));
       setActiveMinutoDraws(draws);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'pix_premiado_draws'), where('status', '==', 'active'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const draws = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PixPremiadoDraw));
+      setActivePixDraws(draws);
     });
     return () => unsubscribe();
   }, []);
@@ -288,6 +302,142 @@ export default function Home() {
 
   const closePromo = () => {
     setShowMinutoPromo(false);
+  };
+
+  // Helper to fetch random free pool games
+  const fetchRandomFreeGames = async (nToFetch: number): Promise<any[]> => {
+    const randomIndex = Math.floor(Math.random() * 30000);
+    
+    let q = query(
+      collection(db, 'pix_premiado_pool'),
+      where('assigned', '==', false),
+      where('index', '>=', randomIndex),
+      limit(nToFetch)
+    );
+    let snap = await getDocs(q);
+    let results = [...snap.docs];
+
+    if (results.length < nToFetch) {
+      const needed = nToFetch - results.length;
+      q = query(
+        collection(db, 'pix_premiado_pool'),
+        where('assigned', '==', false),
+        where('index', '<', randomIndex),
+        limit(needed)
+      );
+      const snap2 = await getDocs(q);
+      results = [...results, ...snap2.docs];
+    }
+    return results;
+  };
+
+  const handleBuyPixTickets = async () => {
+    if (!user || !profile) {
+      showToast('Por favor, faça login para comprar bilhetes!', 'error');
+      return;
+    }
+
+    const count = parseInt(pixTicketCount);
+    if (isNaN(count) || count <= 0) {
+      showToast('Por favor, insira uma quantidade de bilhetes válida.', 'error');
+      return;
+    }
+
+    const ticketPriceVal = 1.00; // R$ 1,00 each
+    const totalCost = count * ticketPriceVal;
+    const currentBalance = profile.balance || 0;
+
+    if (currentBalance < totalCost) {
+      showToast(`Você não possui saldo suficiente (Saldo: R$ ${currentBalance.toFixed(2)} / Custo: R$ ${totalCost.toFixed(2)}). Por favor, recarregue seu saldo no Painel do Usuário!`, 'error');
+      return;
+    }
+
+    setIsPurchasingPix(true);
+    try {
+      // 1. Get random unassigned games from pool
+      const poolDocs = await fetchRandomFreeGames(count);
+      if (poolDocs.length < count) {
+        throw new Error(`Não há jogos livres suficientes no pool! Disponíveis: ${poolDocs.length}, Solicitados: ${count}.`);
+      }
+
+      // 2. Write using Firestore transaction
+      const boughtList: any[] = [];
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await transaction.get(userRef);
+
+        if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+        const freshProfile = userSnap.data() as UserProfile;
+        const freshBalance = freshProfile.balance || 0;
+
+        if (freshBalance < totalCost) {
+          throw new Error('Saldo insuficiente detectado.');
+        }
+
+        // Deduct balance
+        transaction.update(userRef, { balance: freshBalance - totalCost });
+
+        // Log transaction
+        const transRef = doc(collection(db, 'transactions'));
+        transaction.set(transRef, {
+          userId: user.uid,
+          type: 'bet', // Mark type as bet so it tracks properly
+          amount: -totalCost,
+          status: 'confirmed',
+          timestamp: serverTimestamp(),
+          description: `Compra de ${count} bilhete(s) do Pool PIX PREMIADO`
+        });
+
+        // Write games and assign in pool
+        poolDocs.forEach(docSnap => {
+          const gameNumbers = docSnap.data().numbers as number[];
+          boughtList.push(gameNumbers);
+          
+          // Mark assigned in pool doc
+          const poolDocRef = doc(db, 'pix_premiado_pool', docSnap.id);
+          transaction.update(poolDocRef, {
+            assigned: true,
+            assignedUserId: user.uid,
+            assignedUserName: freshProfile.name,
+            assignedAt: serverTimestamp()
+          });
+
+          // Write game
+          const gameRef = doc(collection(db, 'pix_premiado_games'));
+          transaction.set(gameRef, {
+            userId: user.uid,
+            userName: freshProfile.name,
+            numbers: gameNumbers,
+            price: ticketPriceVal,
+            createdAt: serverTimestamp()
+          });
+        });
+      });
+
+      // 3. Update metadata counts
+      try {
+        const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+        await runTransaction(db, async (transaction) => {
+          const metaSnap = await transaction.get(metaRef);
+          const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+          transaction.set(metaRef, {
+            assignedGames: currentAssigned + count
+          }, { merge: true });
+        });
+      } catch (metaErr) {
+        console.error("Error updating pool metadata count:", metaErr);
+      }
+
+      setRecentBoughtTickets(boughtList);
+      setShowPixBoughtModal(true);
+      showToast(`${count} bilhete(s) do pool comprado(s) com sucesso por R$ ${totalCost.toFixed(2)}!`, 'success');
+      setPixTicketCount('1');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Erro ao comprar bilhetes.', 'error');
+    } finally {
+      setIsPurchasingPix(false);
+    }
   };
 
   useEffect(() => {
@@ -982,6 +1132,166 @@ export default function Home() {
             </div>
           )}
 
+          {/* Sessão PIX PREMIADO Ativo */}
+          {activePixDraws.length > 0 && (
+            <div className="bg-gradient-to-r from-slate-950 via-indigo-955 to-slate-950 text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden border border-indigo-500/30">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(99,102,241,0.12),transparent_50%)] pointer-events-none"></div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 flex items-center gap-2.5">
+                    <Sparkles className="w-6 h-6 text-yellow-400 animate-spin shrink-0" style={{ animationDuration: '8s' }} />
+                    <span>PIX PREMIADO ATIVO</span>
+                    <span className="bg-emerald-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm shrink-0 animate-pulse">Disponível</span>
+                  </h2>
+                  <p className="text-slate-300 text-xs sm:text-sm mt-1 font-medium">
+                    Escolha a quantidade de bilhetes desejada e concorra! O sorteio é realizado diretamente com base na extração oficial.
+                  </p>
+                </div>
+                <Link
+                  to="/user-panel"
+                  className="bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-500/30 transition-all flex items-center gap-1.5 self-start sm:self-center"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>Meus Bilhetes</span>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+                {activePixDraws.map(draw => {
+                  const date = new Date(draw.drawDate);
+                  return (
+                    <div key={draw.id} className="lg:col-span-12 grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-950/60 p-6 rounded-2xl border border-indigo-500/20 shadow-inner">
+                      
+                      {/* Detalhes do Sorteio */}
+                      <div className="md:col-span-7 flex flex-col justify-between space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="bg-indigo-900/60 text-indigo-200 font-bold text-[11px] px-3 py-1 rounded-md border border-indigo-700/30 uppercase tracking-wide">
+                              {draw.gameType === 'federal' ? '🎰 LOTERIA FEDERAL' : '🔮 MEGA-SENA'}
+                            </span>
+                            <span className="bg-yellow-400/10 text-yellow-300 font-bold text-[11px] px-3 py-1 rounded-md border border-yellow-400/20">
+                              Preço: R$ 1,00/bilhete
+                            </span>
+                          </div>
+
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
+                            {draw.name}
+                          </h3>
+
+                          {draw.observations && (
+                            <div className="bg-slate-900/80 border border-indigo-950/50 p-3 rounded-xl text-slate-300 text-xs sm:text-sm font-medium italic whitespace-pre-wrap">
+                              <span className="text-yellow-400 font-bold not-italic block mb-1">Prêmio e Observações:</span>
+                              {draw.observations}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-800/60">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
+                            <Calendar className="w-4.5 h-4.5 text-indigo-400 shrink-0" />
+                            <div>
+                              <span className="block text-[10px] text-slate-500 font-bold uppercase">Data do Sorteio</span>
+                              <span className="font-semibold text-slate-200">
+                                {date.toLocaleDateString('pt-BR', { timeZone: 'America/Manaus' })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
+                            <Clock className="w-4.5 h-4.5 text-indigo-400 shrink-0" />
+                            <div>
+                              <span className="block text-[10px] text-slate-500 font-bold uppercase">Horário do Sorteio</span>
+                              <span className="font-semibold text-slate-200">
+                                {date.toLocaleTimeString('pt-BR', { timeZone: 'America/Manaus', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interface de Compra */}
+                      <div className="md:col-span-5 bg-gradient-to-br from-indigo-950/40 to-slate-950 p-5 rounded-xl border border-indigo-500/15 flex flex-col justify-between space-y-4">
+                        <div className="space-y-3">
+                          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                            Quantidade de Bilhetes
+                          </label>
+                          
+                          {/* Pre-sets */}
+                          <div className="grid grid-cols-5 gap-1.5 font-mono">
+                            {['1', '5', '10', '50', '100'].map(val => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setPixTicketCount(val)}
+                                className={`py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                                  pixTicketCount === val
+                                    ? 'bg-yellow-400 border-yellow-400 text-slate-950 shadow-md shadow-yellow-400/20 scale-105'
+                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300'
+                                }`}
+                              >
+                                {val}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom Input */}
+                          <div className="relative mt-2">
+                            <input
+                              type="number"
+                              min="1"
+                              max="1000"
+                              value={pixTicketCount}
+                              onChange={(e) => setPixTicketCount(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg py-2 pl-3 pr-10 text-sm font-semibold text-white placeholder-slate-500 font-mono"
+                              placeholder="Outra quantidade..."
+                            />
+                            <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-500">
+                              un
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 pt-2">
+                          <div className="flex justify-between items-center text-xs text-slate-400 font-bold uppercase">
+                            <span>Total</span>
+                            <span className="text-yellow-400 text-lg font-black font-mono">
+                              R$ {(parseInt(pixTicketCount) || 0).toFixed(2)}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleBuyPixTickets}
+                            disabled={isPurchasingPix || !parseInt(pixTicketCount)}
+                            className="w-full bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-500 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black text-xs uppercase tracking-wider py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-yellow-400/10 hover:shadow-yellow-400/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            {isPurchasingPix ? (
+                              <>
+                                <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                                <span>Processando Compra...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CircleDollarSign className="w-4 h-4 shrink-0" />
+                                <span>COMPRAR BILHETES AGORA</span>
+                              </>
+                            )}
+                          </button>
+                          
+                          <p className="text-[10px] text-center text-slate-500">
+                            * O valor será debitado do seu saldo.
+                          </p>
+                        </div>
+
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {officialMatches.length > 0 && (
             <div>
               <h2 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
@@ -1416,6 +1726,62 @@ export default function Home() {
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-colors shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                 >
                   {isConverting ? "Convertendo..." : "Confirmar Conversão"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPixBoughtModal && recentBoughtTickets.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md">
+            <div className="absolute inset-0" onClick={() => setShowPixBoughtModal(false)} />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-slate-950 text-white rounded-3xl overflow-hidden shadow-2xl border border-indigo-500/30 flex flex-col gap-6 p-6 sm:p-8 z-10 text-center"
+            >
+              <div className="mx-auto bg-gradient-to-tr from-yellow-400 to-amber-500 p-4 rounded-full shadow-lg shadow-yellow-500/20 text-slate-950 animate-bounce flex items-center justify-center">
+                <Trophy className="w-8 h-8" />
+              </div>
+
+              <div>
+                <h3 className="text-xl sm:text-2xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400">
+                  COMPRA CONFIRMADA! 🎉
+                </h3>
+                <p className="text-slate-400 text-xs sm:text-sm mt-1">
+                  Seus bilhetes foram gerados com sucesso pelo sistema e adicionados à sua conta. Boa sorte!
+                </p>
+              </div>
+
+              {/* Grid de bilhetes comprados */}
+              <div className="max-h-60 overflow-y-auto pr-1 space-y-3">
+                {recentBoughtTickets.map((numbers, idx) => (
+                  <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left">
+                    <span className="text-[10px] uppercase font-black text-indigo-400">Bilhete #{idx + 1}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {numbers.map((n: number, nIdx: number) => (
+                        <span key={nIdx} className="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-500/40 text-indigo-200 font-mono text-xs font-black flex items-center justify-center shadow-inner">
+                          {n.toString().padStart(2, '0')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-2xl p-4 text-xs text-indigo-300 text-left space-y-1">
+                <span className="font-bold text-yellow-400 block mb-1">Dica de Ouro:</span>
+                <p>Estes bilhetes estão salvos na sua conta e você pode visualizá-los a qualquer momento acessando o <strong className="text-white">Painel do Usuário</strong> pelo menu superior.</p>
+              </div>
+
+              <div className="flex gap-3 justify-center mt-2">
+                <button
+                  onClick={() => setShowPixBoughtModal(false)}
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-yellow-400/10 hover:shadow-yellow-400/20 active:scale-95 cursor-pointer w-full"
+                >
+                  FECHAR & CONTINUAR
                 </button>
               </div>
             </motion.div>
