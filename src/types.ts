@@ -1,7 +1,7 @@
 export type Role = 'user' | 'admin';
 export type MatchStatus = 'open' | 'betting_closed' | 'finished';
 export type BetStatus = 'confirmed' | 'pending';
-export type TransactionType = 'deposit' | 'withdrawal' | 'manual_deduction' | 'bet' | 'prize';
+export type TransactionType = 'deposit' | 'withdrawal' | 'manual_deduction' | 'bet' | 'prize' | 'refund';
 export type TransactionStatus = 'pending' | 'confirmed' | 'rejected';
 
 export interface UserProfile {

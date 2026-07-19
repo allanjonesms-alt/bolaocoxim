@@ -53,7 +53,7 @@
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
-        "type": { "type": "string", "enum": ["deposit", "withdrawal", "bet", "prize"] },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "bet", "prize", "refund"] },
         "amount": { "type": "number" },
         "status": { "type": "string", "enum": ["pending", "confirmed"] },
         "timestamp": { "type": "string", "format": "date-time" }

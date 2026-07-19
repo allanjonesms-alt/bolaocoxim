@@ -138,7 +138,7 @@ service cloud.firestore {
     function isValidTransaction(data) {
       return data.keys().hasAll(['userId', 'type', 'amount', 'status', 'timestamp'])
         && data.userId is string
-        && data.type in ['deposit', 'withdrawal', 'manual_deduction', 'bet', 'prize']
+        && data.type in ['deposit', 'withdrawal', 'manual_deduction', 'bet', 'prize', 'refund']
         && data.amount is number
         && data.status in ['pending', 'confirmed']
         && data.timestamp is timestamp;
