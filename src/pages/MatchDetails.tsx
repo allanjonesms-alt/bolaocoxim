@@ -1145,6 +1145,14 @@ export default function MatchDetails() {
                       return t.userName.toLowerCase().includes(searchLower) || t.minuteLabel.includes(searchLower);
                     });
 
+                    // Only show upcoming/active tickets (at most 5), or last 5 past tickets if no upcoming remain
+                    let visibleTickets = filteredTickets.filter(t => t.minuteValue >= timerVal);
+                    if (visibleTickets.length === 0) {
+                      visibleTickets = filteredTickets.slice(-5);
+                    } else {
+                      visibleTickets = visibleTickets.slice(0, 5);
+                    }
+
                     return (
                       <div className="space-y-3">
                         {/* Search Bar for Minuto Certo */}
@@ -1172,8 +1180,8 @@ export default function MatchDetails() {
                           <span>Status</span>
                         </div>
                         
-                        <div className="overflow-y-auto max-h-[450px] pr-2 custom-scrollbar space-y-2.5">
-                          {filteredTickets.map((ticket) => {
+                        <div className="space-y-2.5">
+                          {visibleTickets.map((ticket) => {
                             const isPast = ticket.minuteValue < timerVal;
                             const isActive = ticket.minuteValue === timerVal;
                             
@@ -1234,7 +1242,7 @@ export default function MatchDetails() {
                         </div>
 
                         <p className="text-[10px] text-center text-slate-400 font-medium mt-4">
-                          Mostrando {filteredTickets.length} minutos comprados. A lista rola automaticamente para focar o minuto ativo.
+                          Mostrando os próximos minutos do jogo (máximo 5).
                         </p>
                       </div>
                     );
