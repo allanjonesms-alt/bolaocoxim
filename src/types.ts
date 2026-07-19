@@ -15,6 +15,7 @@ export interface UserProfile {
   createdAt: string;
   displayId?: string;
   numericId?: number;
+  dismissedNotificationId?: string;
 }
 
 export interface Match {

@@ -54,7 +54,7 @@ function gerarJogo(): number[] {
   return numeros.sort((a, b) => a - b);
 }
 
-export default function AdminPixPremiado() {
+export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomponent?: boolean }) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [games, setGames] = useState<PixPremiadoGame[]>([]);
   const [loading, setLoading] = useState(true);
@@ -659,9 +659,11 @@ export default function AdminPixPremiado() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/admin" className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
+          {!isSubcomponent && (
+            <Link to="/admin" className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          )}
           <div>
             <h1 className="text-3xl font-display font-bold text-slate-800 tracking-tight flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-indigo-600" />

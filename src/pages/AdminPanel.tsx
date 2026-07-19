@@ -27,7 +27,7 @@ const processImage = (file: File): Promise<string> => {
   });
 };
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { Trophy, Edit, Check, X, AlertTriangle, Clock, Wallet } from 'lucide-react';
+import { Trophy, Edit, Check, X, AlertTriangle, Clock, Wallet, Dices, Sparkles } from 'lucide-react';
 
 export default function AdminPanel() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -1164,7 +1164,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Botões de Acesso Rápido a Novas Telas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link 
           to="/admin/users" 
           className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
@@ -1207,29 +1207,16 @@ export default function AdminPanel() {
           </div>
         </Link>
         <Link 
-          to="/admin/pix-premiado" 
-          className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-indigo-500/10 transition-colors"></div>
-          <div className="bg-indigo-50 p-4 rounded-full text-indigo-650 group-hover:scale-110 group-hover:bg-indigo-100 transition-all flex items-center justify-center relative">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.886L4.202 9l5.886 1.912L12 16.81l1.912-5.898 5.886-.088-5.886-1.912z"/></svg>
-          </div>
-          <div className="text-center">
-            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">PIX Premiado</h3>
-            <p className="text-xs text-slate-500 font-medium">Gestão de sorteio com restrição de quadra única.</p>
-          </div>
-        </Link>
-        <Link 
-          to="/admin/minuto-certo" 
+          to="/admin/sorteios" 
           className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 hover:border-amber-300 hover:shadow-lg transition-all group relative overflow-hidden flex flex-col justify-center items-center gap-3 cursor-pointer"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-amber-500/10 transition-colors"></div>
-          <div className="bg-amber-50 p-4 rounded-full text-amber-600 group-hover:scale-110 group-hover:bg-amber-100 transition-all flex items-center justify-center relative">
-            <Clock className="w-8 h-8 text-amber-600" />
+          <div className="bg-amber-50 p-4 rounded-full text-amber-600 group-hover:scale-110 group-hover:bg-amber-100 transition-all flex items-center justify-center relative animate-pulse">
+            <Dices className="w-8 h-8 text-amber-600" />
           </div>
           <div className="text-center">
-            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Minuto Certo</h3>
-            <p className="text-xs text-slate-500 font-medium">Gestão de sorteio de gols por minutos únicos.</p>
+            <h3 className="font-display font-bold text-slate-800 text-base uppercase tracking-wider mb-1">Sorteios</h3>
+            <p className="text-xs text-slate-500 font-medium">Gestão integrada do PIX Premiado e do Minuto Certo.</p>
           </div>
         </Link>
       </div>

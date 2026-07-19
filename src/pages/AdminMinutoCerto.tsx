@@ -6,7 +6,7 @@ import { formatMinuteValue, getMinutePeriod } from '../lib/utils';
 import { ArrowLeft, Clock, Calendar, Check, X, Trophy, Plus, RefreshCw, Trash2, Edit2, ShieldAlert, Award, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export default function AdminMinutoCerto() {
+export default function AdminMinutoCerto({ isSubcomponent = false }: { isSubcomponent?: boolean }) {
   const [draws, setDraws] = useState<MinutoCertoDraw[]>([]);
   const [tickets, setTickets] = useState<MinutoCertoTicket[]>([]);
   const [selectedDrawId, setSelectedDrawId] = useState<string>('');
@@ -311,9 +311,11 @@ export default function AdminMinutoCerto() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
         <div>
-          <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase tracking-wider mb-2 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Voltar ao Painel
-          </Link>
+          {!isSubcomponent && (
+            <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase tracking-wider mb-2 transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Voltar ao Painel
+            </Link>
+          )}
           <h1 className="text-3xl font-display font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
             <div className="bg-amber-100 p-2.5 rounded-2xl text-amber-600">
               <Clock className="w-7 h-7" />

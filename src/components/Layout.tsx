@@ -39,10 +39,20 @@ export default function Layout() {
     };
   }, []);
 
-  const handleDismissGlobalNotification = () => {
+  const handleDismissGlobalNotification = async () => {
     if (globalNotification?.id) {
       localStorage.setItem('dismissed_notification_id', globalNotification.id);
       setDismissedNotificationId(globalNotification.id);
+      
+      if (profile?.id) {
+        try {
+          await updateDoc(doc(db, 'users', profile.id), {
+            dismissedNotificationId: globalNotification.id
+          });
+        } catch (err) {
+          console.error("Erro ao salvar dismiss no perfil:", err);
+        }
+      }
     }
   };
 
@@ -279,7 +289,9 @@ export default function Layout() {
       )}
 
       {/* Global Notification Popup for all users */}
-      {globalNotification?.active && globalNotification.id !== dismissedNotificationId && (
+      {globalNotification?.active && 
+       globalNotification.id !== dismissedNotificationId && 
+       (!profile || profile.dismissedNotificationId !== globalNotification.id) && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl border border-amber-200 w-full max-w-md p-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-amber-500"></div>
