@@ -112,6 +112,90 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
+  // State for refunding / deleting registered ticket
+  const [ticketToRefund, setTicketToRefund] = useState<PixPremiadoGame | null>(null);
+  const [isDeletingTicketId, setIsDeletingTicketId] = useState<string | null>(null);
+
+  const handleRefundTicket = async (game: PixPremiadoGame) => {
+    setIsDeletingTicketId(game.id);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', game.userId);
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+
+        const freshProfile = userSnap.data() as UserProfile;
+        const freshBalance = freshProfile.balance || 0;
+
+        // Refund user balance
+        const refundedBalance = freshBalance + game.price;
+        transaction.update(userRef, { balance: refundedBalance });
+
+        // Log transaction
+        const transRef = doc(collection(db, 'transactions'));
+        transaction.set(transRef, {
+          userId: game.userId,
+          type: 'refund',
+          amount: game.price,
+          status: 'confirmed',
+          timestamp: serverTimestamp(),
+          description: `Cancelamento de bilhete Pix Premiado #${game.id} por administrador - Reembolso de R$ ${game.price.toFixed(2)}`
+        });
+
+        // Delete game document
+        const gameRef = doc(db, 'pix_premiado_games', game.id);
+        transaction.delete(gameRef);
+      });
+
+      // Update pool doc to not assigned (if it was a pool game)
+      if (game.numbers.length > 1) {
+        try {
+          const poolQuery = query(
+            collection(db, 'pix_premiado_pool'),
+            where('assigned', '==', true),
+            where('assignedUserId', '==', game.userId)
+          );
+          const poolSnap = await getDocs(poolQuery);
+          const gameNumbersStr = game.numbers.join('-');
+          const matchingPoolDoc = poolSnap.docs.find(d => {
+            const numbers = d.data().numbers as number[];
+            return numbers && numbers.join('-') === gameNumbersStr;
+          });
+
+          if (matchingPoolDoc) {
+            const poolDocRef = doc(db, 'pix_premiado_pool', matchingPoolDoc.id);
+            await setDoc(poolDocRef, {
+              assigned: false,
+              assignedUserId: null,
+              assignedUserName: null,
+              assignedAt: null
+            }, { merge: true });
+
+            // Update metadata count
+            const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+            await runTransaction(db, async (transaction) => {
+              const metaSnap = await transaction.get(metaRef);
+              const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+              transaction.set(metaRef, {
+                assignedGames: Math.max(0, currentAssigned - 1)
+              }, { merge: true });
+            });
+          }
+        } catch (poolErr) {
+          console.error("Error releasing pool ticket or updating metadata:", poolErr);
+        }
+      }
+
+      showToast(`Bilhete do apostador ${game.userName} cancelado e valor de R$ ${game.price.toFixed(2)} reembolsado com sucesso!`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || 'Erro ao cancelar e reembolsar bilhete.', 'error');
+    } finally {
+      setIsDeletingTicketId(null);
+      setTicketToRefund(null);
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 5000);
@@ -409,7 +493,7 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
     return results;
   };
 
-  // NEW: Buy/Register ticket(s) randomly from the pre-generated pool
+  // NEW: Buy/Register ticket(s) randomly from the pre-generated pool (or generate random numbers for Loteria Federal)
   const handleBuyTicketsFromPool = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
@@ -434,88 +518,153 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
       return;
     }
 
+    const activeDraw = draws.find(d => d.status === 'active');
+    const isFederal = activeDraw && activeDraw.type === 'Loteria Federal';
+
     setIsSubmitting(true);
     try {
-      // 1. Get random unassigned games from pool
-      const poolDocs = await fetchRandomFreeGames(count);
-      if (poolDocs.length < count) {
-        throw new Error(`Não há jogos livres suficientes no pool! Disponíveis: ${poolDocs.length}, Solicitados: ${count}. Crie um novo pool de 30.000 dezenas.`);
-      }
+      if (isFederal) {
+        // Generate distinctive random numbers for Loteria Federal [1, 9999]
+        const chosenNums = new Set<number>();
+        while (chosenNums.size < count) {
+          const randomNum = Math.floor(Math.random() * 9999) + 1;
+          chosenNums.add(randomNum);
+        }
+        const chosenNumsArray = Array.from(chosenNums);
 
-      // 2. Write in chunks of 500 using Firestore transactions
-      const writeBatchSize = 500;
-      let savedCount = 0;
+        const writeBatchSize = 500;
+        let savedCount = 0;
 
-      for (let i = 0; i < poolDocs.length; i += writeBatchSize) {
-        const chunk = poolDocs.slice(i, i + writeBatchSize);
-        const chunkCost = chunk.length * ticketPriceVal;
+        for (let i = 0; i < chosenNumsArray.length; i += writeBatchSize) {
+          const chunk = chosenNumsArray.slice(i, i + writeBatchSize);
+          const chunkCost = chunk.length * ticketPriceVal;
 
-        await runTransaction(db, async (transaction) => {
-          const userRef = doc(db, 'users', selectedUserId);
-          const userSnap = await transaction.get(userRef);
+          await runTransaction(db, async (transaction) => {
+            const userRef = doc(db, 'users', selectedUserId);
+            const userSnap = await transaction.get(userRef);
 
-          if (!userSnap.exists()) throw new Error('Usuário não encontrado.');
-          const currentBalance = userSnap.data().balance || 0;
+            if (!userSnap.exists()) throw new Error('Usuário não encontrado.');
+            const currentBalance = userSnap.data().balance || 0;
 
-          if (currentBalance < chunkCost) {
-            throw new Error('Saldo insuficiente detectado na transação.');
-          }
+            if (currentBalance < chunkCost) {
+              throw new Error('Saldo insuficiente detectado na transação.');
+            }
 
-          // Deduct balance
-          transaction.update(userRef, { balance: currentBalance - chunkCost });
+            // Deduct balance
+            transaction.update(userRef, { balance: currentBalance - chunkCost });
 
-          // Log transaction
-          const transRef = doc(collection(db, 'transactions'));
-          transaction.set(transRef, {
-            userId: selectedUserId,
-            type: 'manual_deduction',
-            amount: chunkCost,
-            status: 'confirmed',
-            timestamp: serverTimestamp(),
-            description: `Compra Lote PIX PREMIADO (${chunk.length} bilhetes do Pool)`
-          });
-
-          // Write public games and assign in pool
-          chunk.forEach(docSnap => {
-            const gameNumbers = docSnap.data().numbers as number[];
-            
-            // Mark assigned in pool doc
-            const poolDocRef = doc(db, 'pix_premiado_pool', docSnap.id);
-            transaction.update(poolDocRef, {
-              assigned: true,
-              assignedUserId: selectedUserId,
-              assignedUserName: selectedUser.name,
-              assignedAt: serverTimestamp()
-            });
-
-            // Write game
-            const gameRef = doc(collection(db, 'pix_premiado_games'));
-            transaction.set(gameRef, {
+            // Log transaction
+            const transRef = doc(collection(db, 'transactions'));
+            transaction.set(transRef, {
               userId: selectedUserId,
-              userName: selectedUser.name,
-              numbers: gameNumbers,
-              price: ticketPriceVal,
-              createdAt: serverTimestamp()
+              type: 'manual_deduction',
+              amount: chunkCost,
+              status: 'confirmed',
+              timestamp: serverTimestamp(),
+              description: `Compra Lote Loteria Federal (${chunk.length} bilhetes - Pix Premiado)`
+            });
+
+            // Write public games
+            chunk.forEach(num => {
+              const gameRef = doc(collection(db, 'pix_premiado_games'));
+              transaction.set(gameRef, {
+                userId: selectedUserId,
+                userName: selectedUser.name,
+                numbers: [num],
+                price: ticketPriceVal,
+                createdAt: serverTimestamp()
+              });
             });
           });
+
+          savedCount += chunk.length;
+        }
+
+        setSelectedUserId('');
+        setTicketCountToBuy('1');
+        showToast(`${savedCount} bilhete(s) Loteria Federal comprado(s) e registrado(s) com sucesso por R$ 1,00 cada!`, 'success');
+      } else {
+        // MegaSena: Get random unassigned games from pool
+        const poolDocs = await fetchRandomFreeGames(count);
+        if (poolDocs.length < count) {
+          throw new Error(`Não há jogos livres suficientes no pool! Disponíveis: ${poolDocs.length}, Solicitados: ${count}. Crie um novo pool de 30.000 dezenas.`);
+        }
+
+        // 2. Write in chunks of 500 using Firestore transactions
+        const writeBatchSize = 500;
+        let savedCount = 0;
+
+        for (let i = 0; i < poolDocs.length; i += writeBatchSize) {
+          const chunk = poolDocs.slice(i, i + writeBatchSize);
+          const chunkCost = chunk.length * ticketPriceVal;
+
+          await runTransaction(db, async (transaction) => {
+            const userRef = doc(db, 'users', selectedUserId);
+            const userSnap = await transaction.get(userRef);
+
+            if (!userSnap.exists()) throw new Error('Usuário não encontrado.');
+            const currentBalance = userSnap.data().balance || 0;
+
+            if (currentBalance < chunkCost) {
+              throw new Error('Saldo insuficiente detectado na transação.');
+            }
+
+            // Deduct balance
+            transaction.update(userRef, { balance: currentBalance - chunkCost });
+
+            // Log transaction
+            const transRef = doc(collection(db, 'transactions'));
+            transaction.set(transRef, {
+              userId: selectedUserId,
+              type: 'manual_deduction',
+              amount: chunkCost,
+              status: 'confirmed',
+              timestamp: serverTimestamp(),
+              description: `Compra Lote PIX PREMIADO (${chunk.length} bilhetes do Pool)`
+            });
+
+            // Write public games and assign in pool
+            chunk.forEach(docSnap => {
+              const gameNumbers = docSnap.data().numbers as number[];
+              
+              // Mark assigned in pool doc
+              const poolDocRef = doc(db, 'pix_premiado_pool', docSnap.id);
+              transaction.update(poolDocRef, {
+                assigned: true,
+                assignedUserId: selectedUserId,
+                assignedUserName: selectedUser.name,
+                assignedAt: serverTimestamp()
+              });
+
+              // Write game
+              const gameRef = doc(collection(db, 'pix_premiado_games'));
+              transaction.set(gameRef, {
+                userId: selectedUserId,
+                userName: selectedUser.name,
+                numbers: gameNumbers,
+                price: ticketPriceVal,
+                createdAt: serverTimestamp()
+              });
+            });
+          });
+
+          savedCount += chunk.length;
+        }
+
+        // 3. Update metadata counts
+        const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+        await runTransaction(db, async (transaction) => {
+          const metaSnap = await transaction.get(metaRef);
+          const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+          transaction.set(metaRef, {
+            assignedGames: currentAssigned + savedCount
+          }, { merge: true });
         });
 
-        savedCount += chunk.length;
+        setSelectedUserId('');
+        setTicketCountToBuy('1');
+        showToast(`${savedCount} bilhete(s) do pool comprado(s) e registrado(s) com sucesso por R$ 1,00 cada!`, 'success');
       }
-
-      // 3. Update metadata counts
-      const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
-      await runTransaction(db, async (transaction) => {
-        const metaSnap = await transaction.get(metaRef);
-        const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
-        transaction.set(metaRef, {
-          assignedGames: currentAssigned + savedCount
-        }, { merge: true });
-      });
-
-      setSelectedUserId('');
-      setTicketCountToBuy('1');
-      showToast(`${savedCount} bilhete(s) do pool comprado(s) e registrado(s) com sucesso por R$ 1,00 cada!`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Erro ao comprar bilhetes.', 'error');
     } finally {
@@ -1139,6 +1288,7 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
                   <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Apostador</th>
                   <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Dezenas</th>
                   <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Valor Pago</th>
+                  <th className="py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -1151,19 +1301,36 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
                       </p>
                     </td>
                     <td className="py-4">
-                      <div className="flex justify-center gap-1.5">
-                        {g.numbers.map((n, i) => (
-                          <span 
-                            key={i} 
-                            className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center border border-slate-200"
-                          >
-                            {String(n).padStart(2, '0')}
+                      {g.numbers.length === 1 ? (
+                        <div className="flex justify-center">
+                          <span className="px-3.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-black text-sm rounded-lg shadow-sm">
+                            Nº {String(g.numbers[0]).padStart(4, '0')}
                           </span>
-                        ))}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-center gap-1.5">
+                          {g.numbers.map((n, i) => (
+                            <span 
+                              key={i} 
+                              className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center border border-slate-200"
+                            >
+                              {String(n).padStart(2, '0')}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 font-mono text-xs font-bold text-emerald-700">
                       R$ {g.price.toFixed(2)}
+                    </td>
+                    <td className="py-4 text-right">
+                      <button
+                        onClick={() => setTicketToRefund(g)}
+                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors inline-flex items-center justify-center cursor-pointer"
+                        title="Excluir Bilhete e Reembolsar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1239,6 +1406,49 @@ export default function AdminPixPremiado({ isSubcomponent = false }: { isSubcomp
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors shadow-lg shadow-red-600/15 cursor-pointer"
               >
                 Confirmar Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ticketToRefund && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 text-left">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Cancelar e Reembolsar Bilhete?</h3>
+              <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                Deseja realmente cancelar o bilhete do apostador <strong className="text-slate-800">{ticketToRefund.userName}</strong>? O bilhete será removido permanentemente e o valor de <strong className="text-emerald-700">R$ {ticketToRefund.price.toFixed(2)}</strong> será devolvido ao saldo dele.
+              </p>
+              <div className="mt-4 bg-slate-50 rounded-2xl p-4 border border-slate-150 text-left space-y-2">
+                <span className="text-[10px] font-bold text-slate-450 uppercase block">Dezenas do Bilhete:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {ticketToRefund.numbers.map((num, i) => (
+                    <span key={i} className="px-2.5 py-1 rounded bg-white text-indigo-900 font-mono font-bold text-sm border border-slate-200 shadow-sm">
+                      {ticketToRefund.numbers.length === 1 ? String(num).padStart(4, '0') : String(num).padStart(2, '0')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setTicketToRefund(null)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3 px-4 rounded-xl text-sm transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!!isDeletingTicketId}
+                onClick={() => handleRefundTicket(ticketToRefund)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition-colors shadow-lg shadow-red-600/15 cursor-pointer"
+              >
+                {isDeletingTicketId ? "Processando..." : "Confirmar Exclusão"}
               </button>
             </div>
           </div>

@@ -4,6 +4,63 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  /* Redefining emerald to be a beautiful light blue / deep navy palette */
+  --color-emerald-50: #f0f9ff;
+  --color-emerald-100: #e0f2fe;
+  --color-emerald-200: #bae6fd;
+  --color-emerald-300: #7dd3fc;
+  --color-emerald-400: #38bdf8;
+  --color-emerald-500: #0ea5e9;
+  --color-emerald-600: #0284c7;
+  --color-emerald-750: #045c8c;
+  --color-emerald-700: #0369a1;
+  --color-emerald-800: #075985;
+  --color-emerald-900: #0c4a6e;
+  --color-emerald-950: #082f49;
+
+  /* Redefining indigo to match the light blue theme seamlessly */
+  --color-indigo-50: #f0f7ff;
+  --color-indigo-100: #e0f2fe;
+  --color-indigo-200: #bae6fd;
+  --color-indigo-300: #7dd3fc;
+  --color-indigo-400: #38bdf8;
+  --color-indigo-500: #0ea5e9;
+  --color-indigo-600: #0284c7;
+  --color-indigo-650: #0571ab;
+  --color-indigo-700: #0369a1;
+  --color-indigo-750: #045c8c;
+  --color-indigo-800: #075985;
+  --color-indigo-850: #063f61;
+  --color-indigo-900: #0c4a6e;
+  --color-indigo-950: #082f49;
+
+  /* Redefining yellow to a true gold theme */
+  --color-yellow-50: #fefdf0;
+  --color-yellow-100: #fdfae0;
+  --color-yellow-200: #faf1b6;
+  --color-yellow-300: #f4e17e;
+  --color-yellow-400: #d4af37; /* Gold */
+  --color-yellow-500: #cca43b; /* Gold dark */
+  --color-yellow-600: #b28c24;
+  --color-yellow-700: #8a691c;
+  --color-yellow-800: #634a15;
+  --color-yellow-900: #42310d;
+  --color-yellow-950: #2d2007;
+
+  /* Redefining amber to match gold */
+  --color-amber-50: #fefdf0;
+  --color-amber-100: #fdfae0;
+  --color-amber-200: #faf1b6;
+  --color-amber-300: #f4e17e;
+  --color-amber-400: #d4af37; /* Gold */
+  --color-amber-500: #cca43b; /* Gold dark */
+  --color-amber-600: #b28c24;
+  --color-amber-700: #8a691c;
+  --color-amber-800: #634a15;
+  --color-amber-850: #513c10;
+  --color-amber-900: #42310d;
+  --color-amber-950: #2d2007;
 }
 
 @layer base {

@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopu
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Trophy } from 'lucide-react';
+import logoImg from '../assets/images/logo.jpg';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -121,8 +122,8 @@ export default function Login() {
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-50 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="flex flex-col items-center mb-8 relative z-10">
-          <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl mb-5 shadow-sm">
-            <Trophy className="h-8 w-8 text-emerald-600" />
+          <div className="h-20 w-20 bg-emerald-50 border border-emerald-100 p-1.5 rounded-2xl mb-5 shadow-sm flex items-center justify-center overflow-hidden">
+            <img src={logoImg} alt="PIXCOXIM Logo" referrerPolicy="no-referrer" className="h-full w-full object-contain rounded-xl" />
           </div>
           <h1 className="text-3xl font-display font-bold text-slate-800 tracking-tight">BOLÃO COXIM <span className="text-emerald-600">2026</span></h1>
           <p className="text-slate-500 mt-2 text-center text-sm font-medium">

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, doc, updateDoc, runTransaction, getDocs, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { Bet, Transaction, Match, PixPremiadoGame, MinutoCertoDraw, MinutoCertoTicket, UserProfile } from '../types';
+import { Bet, Transaction, Match, PixPremiadoGame, MinutoCertoDraw, MinutoCertoTicket, UserProfile, PixPremiadoDraw } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
-import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X, Copy, Check, Sparkles, Award, Calendar } from 'lucide-react';
+import { QrCode, Wallet, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, Trophy, X, Copy, Check, Sparkles, Award, Calendar, Trash2 } from 'lucide-react';
 import { formatMinuteValue, getMinutePeriod } from '../lib/utils';
 
 export default function UserPanel() {
@@ -20,6 +20,100 @@ export default function UserPanel() {
   const [minutoTickets, setMinutoTickets] = useState<MinutoCertoTicket[]>([]);
   const [isPurchasingMinuto, setIsPurchasingMinuto] = useState(false);
   const [minutoToast, setMinutoToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Pix Premiado states
+  const [activePixDraws, setActivePixDraws] = useState<PixPremiadoDraw[]>([]);
+  const [isPurchasingPix, setIsPurchasingPix] = useState(false);
+  const [pixTicketCount, setPixTicketCount] = useState('1');
+  const [pixToast, setPixToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [recentBoughtTickets, setRecentBoughtTickets] = useState<any[]>([]);
+  const [showPixBoughtModal, setShowPixBoughtModal] = useState(false);
+
+  // Refund and delete ticket states/logic
+  const [ticketToRefund, setTicketToRefund] = useState<PixPremiadoGame | null>(null);
+  const [isDeletingTicketId, setIsDeletingTicketId] = useState<string | null>(null);
+
+  const handleRefundTicket = async (game: PixPremiadoGame) => {
+    if (!user || !profile) return;
+    setIsDeletingTicketId(game.id);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', game.userId);
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+
+        const freshProfile = userSnap.data() as UserProfile;
+        const freshBalance = freshProfile.balance || 0;
+
+        // Refund user balance
+        const refundedBalance = freshBalance + game.price;
+        transaction.update(userRef, { balance: refundedBalance });
+
+        // Log transaction
+        const transRef = doc(collection(db, 'transactions'));
+        transaction.set(transRef, {
+          userId: game.userId,
+          type: 'refund',
+          amount: game.price,
+          status: 'confirmed',
+          timestamp: serverTimestamp(),
+          description: `Cancelamento de bilhete Pix Premiado #${game.id} - Reembolso de R$ ${game.price.toFixed(2)}`
+        });
+
+        // Delete game document
+        const gameRef = doc(db, 'pix_premiado_games', game.id);
+        transaction.delete(gameRef);
+      });
+
+      // Update pool doc to not assigned (if it was a pool game)
+      if (game.numbers.length > 1) {
+        try {
+          const poolQuery = query(
+            collection(db, 'pix_premiado_pool'),
+            where('assigned', '==', true),
+            where('assignedUserId', '==', game.userId)
+          );
+          const poolSnap = await getDocs(poolQuery);
+          const gameNumbersStr = game.numbers.join('-');
+          const matchingPoolDoc = poolSnap.docs.find(d => {
+            const numbers = d.data().numbers as number[];
+            return numbers && numbers.join('-') === gameNumbersStr;
+          });
+
+          if (matchingPoolDoc) {
+            await updateDoc(doc(db, 'pix_premiado_pool', matchingPoolDoc.id), {
+              assigned: false,
+              assignedUserId: null,
+              assignedUserName: null,
+              assignedAt: null
+            });
+
+            // Update metadata count
+            const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+            await runTransaction(db, async (transaction) => {
+              const metaSnap = await transaction.get(metaRef);
+              const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+              transaction.set(metaRef, {
+                assignedGames: Math.max(0, currentAssigned - 1)
+              }, { merge: true });
+            });
+          }
+        } catch (poolErr) {
+          console.error("Error releasing pool ticket or updating metadata:", poolErr);
+        }
+      }
+
+      setPixToast({ message: `Bilhete cancelado e R$ ${game.price.toFixed(2)} reembolsados com sucesso!`, type: 'success' });
+      setTimeout(() => setPixToast(null), 4000);
+    } catch (err: any) {
+      console.error(err);
+      setPixToast({ message: err.message || 'Erro ao cancelar bilhete.', type: 'error' });
+      setTimeout(() => setPixToast(null), 4000);
+    } finally {
+      setIsDeletingTicketId(null);
+      setTicketToRefund(null);
+    }
+  };
   
   const [showPix, setShowPix] = useState(false);
   const [depositAmount, setDepositAmount] = useState('50');
@@ -97,7 +191,13 @@ export default function UserPanel() {
       setMinutoTickets(mcTicketsData);
     });
 
-    return () => { unsubBets(); unsubTrans(); unsubMatches(); unsubRaffle(); unsubMC_Draws(); unsubMC_Tickets(); };
+    const qPix = query(collection(db, 'pix_premiado_draws'), where('status', '==', 'active'));
+    const unsubPixDraws = onSnapshot(qPix, (snapshot) => {
+      const draws = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PixPremiadoDraw));
+      setActivePixDraws(draws);
+    });
+
+    return () => { unsubBets(); unsubTrans(); unsubMatches(); unsubRaffle(); unsubMC_Draws(); unsubMC_Tickets(); unsubPixDraws(); };
   }, [user]);
 
   const handleDepositRequest = async () => {
@@ -239,6 +339,207 @@ export default function UserPanel() {
       setTimeout(() => setMinutoToast(null), 4000);
     } finally {
       setIsPurchasingMinuto(false);
+    }
+  };
+
+  // Helper to fetch random free pool games
+  const fetchRandomFreeGames = async (nToFetch: number): Promise<any[]> => {
+    const randomIndex = Math.floor(Math.random() * 30000);
+    
+    let q = query(
+      collection(db, 'pix_premiado_pool'),
+      where('assigned', '==', false),
+      where('index', '>=', randomIndex),
+      limit(nToFetch)
+    );
+    let snap = await getDocs(q);
+    let results = [...snap.docs];
+
+    if (results.length < nToFetch) {
+      const needed = nToFetch - results.length;
+      q = query(
+        collection(db, 'pix_premiado_pool'),
+        where('assigned', '==', false),
+        where('index', '<', randomIndex),
+        limit(needed)
+      );
+      const snap2 = await getDocs(q);
+      results = [...results, ...snap2.docs];
+    }
+    return results;
+  };
+
+  const handleBuyPixTickets = async () => {
+    if (!user || !profile) {
+      setPixToast({ message: 'Por favor, faça login para comprar bilhetes!', type: 'error' });
+      setTimeout(() => setPixToast(null), 4000);
+      return;
+    }
+
+    const count = parseInt(pixTicketCount);
+    if (isNaN(count) || count <= 0) {
+      setPixToast({ message: 'Por favor, insira uma quantidade de bilhetes válida.', type: 'error' });
+      setTimeout(() => setPixToast(null), 4000);
+      return;
+    }
+
+    const ticketPriceVal = 1.00; // R$ 1,00 each
+    const totalCost = count * ticketPriceVal;
+    const currentBalance = profile.balance || 0;
+
+    if (currentBalance < totalCost) {
+      setPixToast({ message: `Você não possui saldo suficiente (Saldo: R$ ${currentBalance.toFixed(2)} / Custo: R$ ${totalCost.toFixed(2)}).`, type: 'error' });
+      setTimeout(() => setPixToast(null), 4000);
+      return;
+    }
+
+    const activeDraw = activePixDraws[0];
+    const isFederal = activeDraw && activeDraw.type === 'Loteria Federal';
+
+    setIsPurchasingPix(true);
+    try {
+      const boughtList: any[] = [];
+      if (isFederal) {
+        // Generate distinctive random numbers for Loteria Federal [1, 9999]
+        const chosenNums = new Set<number>();
+        while (chosenNums.size < count) {
+          const randomNum = Math.floor(Math.random() * 9999) + 1;
+          chosenNums.add(randomNum);
+        }
+        const chosenNumsArray = Array.from(chosenNums);
+
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await transaction.get(userRef);
+
+          if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+          const freshProfile = userSnap.data() as UserProfile;
+          const freshBalance = freshProfile.balance || 0;
+
+          if (freshBalance < totalCost) {
+            throw new Error('Saldo insuficiente detectado.');
+          }
+
+          // Deduct balance
+          transaction.update(userRef, { balance: freshBalance - totalCost });
+
+          // Log transaction
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: user.uid,
+            type: 'bet',
+            amount: -totalCost,
+            status: 'confirmed',
+            timestamp: serverTimestamp(),
+            description: `Compra de ${count} bilhete(s) Loteria Federal (Pix Premiado)`
+          });
+
+          // Write public games
+          chosenNumsArray.forEach(num => {
+            boughtList.push([num]);
+
+            const gameRef = doc(collection(db, 'pix_premiado_games'));
+            transaction.set(gameRef, {
+              userId: user.uid,
+              userName: freshProfile.name,
+              numbers: [num],
+              price: ticketPriceVal,
+              createdAt: serverTimestamp()
+            });
+          });
+        });
+
+        setRecentBoughtTickets(boughtList);
+        setShowPixBoughtModal(true);
+        setPixToast({ message: `${count} bilhete(s) Loteria Federal comprado(s) com sucesso por R$ ${totalCost.toFixed(2)}!`, type: 'success' });
+        setTimeout(() => setPixToast(null), 4000);
+        setPixTicketCount('1');
+      } else {
+        // MegaSena: Get random unassigned games from pool
+        const poolDocs = await fetchRandomFreeGames(count);
+        if (poolDocs.length < count) {
+          throw new Error(`Não há jogos livres suficientes no pool! Disponíveis: ${poolDocs.length}, Solicitados: ${count}.`);
+        }
+
+        // 2. Write using Firestore transaction
+        await runTransaction(db, async (transaction) => {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await transaction.get(userRef);
+
+          if (!userSnap.exists()) throw new Error('Perfil de usuário não encontrado.');
+          const freshProfile = userSnap.data() as UserProfile;
+          const freshBalance = freshProfile.balance || 0;
+
+          if (freshBalance < totalCost) {
+            throw new Error('Saldo insuficiente detectado.');
+          }
+
+          // Deduct balance
+          transaction.update(userRef, { balance: freshBalance - totalCost });
+
+          // Log transaction
+          const transRef = doc(collection(db, 'transactions'));
+          transaction.set(transRef, {
+            userId: user.uid,
+            type: 'bet', // Mark type as bet so it tracks properly
+            amount: -totalCost,
+            status: 'confirmed',
+            timestamp: serverTimestamp(),
+            description: `Compra de ${count} bilhete(s) do Pool PIX PREMIADO`
+          });
+
+          // Write games and assign in pool
+          poolDocs.forEach(docSnap => {
+            const gameNumbers = docSnap.data().numbers as number[];
+            boughtList.push(gameNumbers);
+            
+            // Mark assigned in pool doc
+            const poolDocRef = doc(db, 'pix_premiado_pool', docSnap.id);
+            transaction.update(poolDocRef, {
+              assigned: true,
+              assignedUserId: user.uid,
+              assignedUserName: freshProfile.name,
+              assignedAt: serverTimestamp()
+            });
+
+            // Write game
+            const gameRef = doc(collection(db, 'pix_premiado_games'));
+            transaction.set(gameRef, {
+              userId: user.uid,
+              userName: freshProfile.name,
+              numbers: gameNumbers,
+              price: ticketPriceVal,
+              createdAt: serverTimestamp()
+            });
+          });
+        });
+
+        // 3. Update metadata counts
+        try {
+          const metaRef = doc(db, 'pix_premiado_metadata', 'pool');
+          await runTransaction(db, async (transaction) => {
+            const metaSnap = await transaction.get(metaRef);
+            const currentAssigned = metaSnap.exists() ? (metaSnap.data().assignedGames || 0) : 0;
+            transaction.set(metaRef, {
+              assignedGames: currentAssigned + count
+            }, { merge: true });
+          });
+        } catch (metaErr) {
+          console.error("Error updating pool metadata count:", metaErr);
+        }
+
+        setRecentBoughtTickets(boughtList);
+        setShowPixBoughtModal(true);
+        setPixToast({ message: `${count} bilhete(s) do pool comprado(s) com sucesso por R$ ${totalCost.toFixed(2)}!`, type: 'success' });
+        setTimeout(() => setPixToast(null), 4000);
+        setPixTicketCount('1');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPixToast({ message: err.message || 'Erro ao comprar bilhetes.', type: 'error' });
+      setTimeout(() => setPixToast(null), 4000);
+    } finally {
+      setIsPurchasingPix(false);
     }
   };
 
@@ -490,92 +791,185 @@ export default function UserPanel() {
 
       {/* History Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">
-          <h3 className="text-xl font-display font-bold text-slate-800 mb-6 flex items-center">
-            Minhas Apostas
-          </h3>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            {bets.length === 0 ? <p className="text-sm text-slate-400 font-medium text-center py-8">Nenhuma aposta realizada.</p> : bets.map(bet => {
-              const m = matches.find(match => match.id === bet.matchId);
-              return (
-                <div key={bet.id} className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex justify-between items-center hover:border-slate-250 transition-colors">
-                  <div>
-                    {m && (
-                      <div className="text-xs text-slate-505 font-semibold mb-1.5 flex items-center gap-1.5">
-                        <span>{m.team1}</span>
-                        {m.flag1?.startsWith('http') || m.flag1?.startsWith('data:') ? (
-                          <img src={m.flag1} alt={m.team1} className="w-4 h-2.5 object-cover rounded-sm border border-slate-100" referrerPolicy="no-referrer" />
-                        ) : (
-                          <span>{m.flag1}</span>
-                        )}
-                        <span className="text-slate-400 font-bold">vs</span>
-                        {m.flag2?.startsWith('http') || m.flag2?.startsWith('data:') ? (
-                          <img src={m.flag2} alt={m.team2} className="w-4 h-2.5 object-cover rounded-sm border border-slate-100" referrerPolicy="no-referrer" />
-                        ) : (
-                          <span>{m.flag2}</span>
-                        )}
-                        <span>{m.team2}</span>
-                      </div>
-                    )}
-                    <div className="text-slate-800 font-extrabold text-lg font-mono mb-1">Palpite: {bet.predicted1} <span className="text-slate-400">x</span> {bet.predicted2}</div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="text-[10px] font-bold uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-slate-200">
-                        Status: 
-                        <span className={bet.status === 'pending' ? 'text-orange-500 ml-1 font-bold' : 'text-emerald-700 ml-1 font-extrabold'}>
-                          {bet.status === 'pending' ? 'Pendente' : 'Confirmada'}
-                        </span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${bet.paid ? 'bg-emerald-50 text-emerald-705 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                        {bet.paid ? 'Pago' : 'Sem Saldo'}
-                      </span>
+        {/* Seção PIX PREMIADO com Destaque Máximo */}
+        <div className="lg:col-span-2 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 border-2 border-indigo-500/45 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-white animate-fade-in">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(99,102,241,0.22),transparent_50%)] pointer-events-none"></div>
+          
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-indigo-500/25 pb-5 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm shrink-0">
+                  ⭐ MÓDULO EXCLUSIVO ESTRELA
+                </span>
+                <span className="bg-indigo-900/60 border border-indigo-500/30 text-indigo-200 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide shrink-0">
+                  PREMIAÇÃO MÁXIMA
+                </span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 flex items-center gap-2.5">
+                <Sparkles className="h-7 w-7 text-yellow-400 animate-spin shrink-0" style={{ animationDuration: '8s' }} />
+                Seus Bilhetes - PIX PREMIADO
+              </h3>
+              <p className="text-xs sm:text-sm text-indigo-200/80 mt-1 font-medium leading-relaxed max-w-2xl">
+                Acompanhe seus bilhetes adquiridos para o sorteio especial do PIX PREMIADO. Cada jogo possui dezenas e quadras exclusivas, garantindo premiações únicas!
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/35 text-xs font-bold px-4 py-1.5 rounded-xl uppercase tracking-wider shadow-sm">
+                ● ATIVO E CONFIRMADO
+              </span>
+            </div>
+          </div>
+
+          {/* Pix Premiado Toast Notification */}
+          {pixToast && (
+            <div className={`mb-6 p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2 animate-fade-in relative z-10 ${
+              pixToast.type === 'success' 
+                ? 'bg-emerald-950/60 text-emerald-300 border-emerald-550/40' 
+                : 'bg-rose-950/60 text-rose-300 border-rose-550/40'
+            }`}>
+              {pixToast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <X className="w-5 h-5 text-rose-400" />}
+              <span>{pixToast.message}</span>
+            </div>
+          )}
+
+          {/* Seção para Compra Rápida se houver sorteio ativo */}
+          {activePixDraws.length > 0 && (
+            <div className="mb-8 bg-slate-900/80 text-white rounded-2xl p-5 border border-indigo-500/30 relative overflow-hidden shadow-inner z-10">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(99,102,241,0.15),transparent_50%)] pointer-events-none"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Sorteio Ativo
+                    </span>
+                    <span className="text-[10px] font-bold text-indigo-300">
+                      {activePixDraws[0].type === 'Loteria Federal' ? '🎰 LOTERIA FEDERAL' : '🔮 MEGA-SENA'}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-300 bg-slate-950/60 px-2 py-0.5 rounded border border-slate-850/60">
+                      Sorteio: {activePixDraws[0].date ? activePixDraws[0].date.split('-').reverse().join('/') : '-'} às {activePixDraws[0].time || '-'}
+                    </span>
+                  </div>
+                  <h4 className="text-lg font-black text-slate-100 flex items-center gap-1.5">
+                    {activePixDraws[0].type === 'Loteria Federal' ? 'Extração da Loteria Federal' : 'Sorteio Especial Mega-Sena'}
+                  </h4>
+                  {activePixDraws[0].observations && (
+                    <p className="text-xs text-slate-300 max-w-lg line-clamp-2 italic">
+                      {activePixDraws[0].observations}
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-slate-950/80 border border-indigo-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0 shadow-lg">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Qtd. Bilhetes
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {['1', '5', '10', '50'].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setPixTicketCount(val)}
+                          className={`px-2.5 py-1 rounded text-xs font-bold transition-all border cursor-pointer ${
+                            pixTicketCount === val
+                              ? 'bg-yellow-400 border-yellow-400 text-slate-950 shadow'
+                              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                          }`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={pixTicketCount}
+                        onChange={(e) => setPixTicketCount(e.target.value)}
+                        className="w-12 bg-slate-900 border border-slate-800 text-white rounded px-1.5 py-1 text-xs text-center font-mono font-bold"
+                      />
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Aposta</div>
-                    <div className="text-base font-extrabold font-mono text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">R$ {bet.amount.toFixed(2)}</div>
+
+                  <div className="flex flex-col justify-end pt-1 sm:pt-0">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase mb-1">
+                      <span>Total:</span>
+                      <span className="text-yellow-400 font-mono text-xs font-black">
+                        R$ {(parseInt(pixTicketCount) || 0).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleBuyPixTickets}
+                      disabled={isPurchasingPix || !parseInt(pixTicketCount)}
+                      className="bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-500 hover:to-yellow-500 disabled:opacity-50 text-slate-950 font-black text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all shadow-md shadow-yellow-400/5 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isPurchasingPix ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                          <span>Processando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-3.5 h-3.5 shrink-0" />
+                          <span>Comprar Bilhetes</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Seção PIX PREMIADO */}
-        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-[50px] pointer-events-none"></div>
-          
-          <h3 className="text-xl font-display font-bold text-slate-850 mb-2 flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-indigo-600" />
-            Seus Bilhetes - PIX PREMIADO
-          </h3>
-          <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
-            Seus bilhetes adquiridos para o sorteio especial do PIX PREMIADO. Cada jogo possui dezenas e quadras exclusivas, garantindo premiações únicas!
-          </p>
+              </div>
+            </div>
+          )}
 
           {raffleGames.length === 0 ? (
-            <p className="text-sm text-slate-400 font-medium text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
-              Você não possui nenhum bilhete no sorteio ativo. Adquira com o administrador!
+            <p className="text-sm text-slate-400 font-medium text-center py-10 bg-slate-900/40 border border-dashed border-indigo-500/20 rounded-2xl relative z-10">
+              Você não possui nenhum bilhete no sorteio ativo. Adquira na Página Inicial ou utilize a compra rápida acima!
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 relative z-10">
               {raffleGames.map(game => (
-                <div key={game.id} className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4 flex flex-col justify-between hover:border-indigo-200 transition-colors">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Bilhete Ativo</span>
-                    <span className="text-[10px] font-semibold text-slate-400">
+                <div key={game.id} className="bg-slate-900/60 border border-indigo-500/25 rounded-2xl p-5 flex flex-col justify-between hover:border-indigo-400/40 hover:bg-slate-900/90 transition-all shadow-lg shadow-slate-950/40">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider bg-yellow-400/10 border border-yellow-400/20 px-2.5 py-0.5 rounded-md">
+                      🎟️ Bilhete Ativo
+                    </span>
+                    <span className="text-[10px] font-semibold text-indigo-300">
                       {game.createdAt ? (game.createdAt.toDate ? game.createdAt.toDate().toLocaleDateString('pt-BR') : new Date(game.createdAt).toLocaleDateString('pt-BR')) : '-'}
                     </span>
                   </div>
-                  <div className="flex gap-1.5 justify-center mb-3">
-                    {game.numbers.map((num, i) => (
-                      <span key={i} className="w-8 h-8 rounded-full bg-white text-indigo-850 font-mono font-bold text-xs flex items-center justify-center border border-indigo-200 shadow-sm">
-                        {String(num).padStart(2, '0')}
+                  
+                  <div className="flex justify-center mb-4 bg-slate-950/65 p-3.5 rounded-xl border border-indigo-950 shadow-inner">
+                    {game.numbers.length === 1 ? (
+                      <span className="px-5 py-2.5 bg-gradient-to-r from-indigo-900 to-indigo-950 border-2 border-indigo-500/40 text-yellow-400 font-mono text-xl font-black rounded-xl tracking-wider shadow-md">
+                        Nº {String(game.numbers[0]).padStart(4, '0')}
                       </span>
-                    ))}
+                    ) : (
+                      <div className="flex gap-2 justify-center flex-wrap">
+                        {game.numbers.map((num, i) => (
+                          <span key={i} className="w-9 h-9 rounded-full bg-slate-950 text-yellow-400 font-mono font-black text-sm flex items-center justify-center border-2 border-indigo-500/35 shadow-sm">
+                            {String(num).padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between items-center text-[10px] text-indigo-900/60 font-semibold border-t border-indigo-100/60 pt-2">
-                    <span>Custo do Bilhete:</span>
-                    <span className="font-mono font-bold text-indigo-700">R$ {game.price.toFixed(2)}</span>
+                  
+                  <div className="flex justify-between items-center border-t border-indigo-500/10 pt-3">
+                    <div className="flex flex-col text-left">
+                      <span className="text-[9px] text-indigo-300 uppercase font-bold tracking-wide">Custo:</span>
+                      <span className="font-mono font-extrabold text-yellow-300 text-xs">R$ {game.price.toFixed(2)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTicketToRefund(game)}
+                      className="px-3 py-1.5 rounded-xl border border-rose-500/20 hover:border-rose-500/40 text-rose-450 hover:text-rose-400 bg-rose-950/10 hover:bg-rose-950/25 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Cancelar</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -949,6 +1343,111 @@ export default function UserPanel() {
                 className="bg-slate-150 hover:bg-slate-250 text-slate-705 px-6 py-2.5 rounded-xl text-sm font-bold border border-slate-250 transition duration-150 cursor-pointer"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPixBoughtModal && recentBoughtTickets.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-fade-in">
+          <div className="absolute inset-0" onClick={() => setShowPixBoughtModal(false)} />
+          
+          <div className="relative w-full max-w-lg bg-slate-950 text-white rounded-3xl overflow-hidden shadow-2xl border border-indigo-500/30 flex flex-col gap-6 p-6 sm:p-8 z-10 text-center">
+            <div className="mx-auto bg-gradient-to-tr from-yellow-400 to-amber-500 p-4 rounded-full shadow-lg shadow-yellow-500/20 text-slate-950 animate-bounce flex items-center justify-center">
+              <Trophy className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="text-xl sm:text-2xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400">
+                COMPRA CONFIRMADA! 🎉
+              </h3>
+              <p className="text-slate-400 text-xs sm:text-sm mt-1">
+                Seus bilhetes foram gerados com sucesso pelo sistema e adicionados à sua conta. Boa sorte!
+              </p>
+            </div>
+
+            {/* Grid de bilhetes comprados */}
+            <div className="max-h-60 overflow-y-auto pr-1 space-y-3">
+              {recentBoughtTickets.map((numbers, idx) => (
+                <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-left">
+                  <span className="text-[10px] uppercase font-black text-indigo-400">Bilhete #{idx + 1}</span>
+                  <div>
+                    {numbers.length === 1 ? (
+                      <span className="px-3.5 py-1.5 bg-indigo-950 border border-indigo-500/35 text-indigo-100 font-mono text-sm font-black rounded-lg tracking-wider">
+                        Nº {numbers[0].toString().padStart(4, '0')}
+                      </span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {numbers.map((n: number, nIdx: number) => (
+                          <span key={nIdx} className="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-500/40 text-indigo-200 font-mono text-xs font-black flex items-center justify-center shadow-inner">
+                            {n.toString().padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-2xl p-4 text-xs text-indigo-300 text-left space-y-1">
+              <span className="font-bold text-yellow-400 block mb-1">Dica de Ouro:</span>
+              <p>Estes bilhetes estão salvos na sua conta e você pode visualizá-los a qualquer momento abaixo.</p>
+            </div>
+
+            <div className="flex gap-3 justify-center mt-2">
+              <button
+                onClick={() => setShowPixBoughtModal(false)}
+                className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-yellow-400/10 hover:shadow-yellow-400/20 active:scale-95 cursor-pointer w-full"
+              >
+                FECHAR & CONTINUAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ticketToRefund && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+          <div className="absolute inset-0" onClick={() => setTicketToRefund(null)} />
+          
+          <div className="relative w-full max-w-md bg-white text-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col gap-5 p-6 z-10 text-left animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600 mb-2">
+              <Trash2 className="w-6 h-6 shrink-0" />
+              <h3 className="text-lg font-bold">Cancelar e Reembolsar Bilhete?</h3>
+            </div>
+
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Tem certeza de que deseja cancelar seu bilhete Pix Premiado? O bilhete será removido permanentemente de seus registros e o valor de <strong className="text-emerald-700">R$ {ticketToRefund.price.toFixed(2)}</strong> será devolvido integralmente ao seu saldo.
+            </p>
+
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-150 space-y-2">
+              <span className="text-[10px] font-bold text-slate-450 uppercase block">Dezenas do Bilhete:</span>
+              <div className="flex flex-wrap gap-1.5 justify-start">
+                {ticketToRefund.numbers.map((num, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded bg-white text-indigo-900 font-mono font-bold text-sm border border-slate-200 shadow-sm">
+                    {ticketToRefund.numbers.length === 1 ? String(num).padStart(4, '0') : String(num).padStart(2, '0')}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => setTicketToRefund(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-transparent hover:bg-slate-50 text-slate-500 text-xs font-bold uppercase cursor-pointer"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                disabled={!!isDeletingTicketId}
+                onClick={() => handleRefundTicket(ticketToRefund)}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isDeletingTicketId ? "Cancelando..." : "Confirmar Reembolso"}
               </button>
             </div>
           </div>

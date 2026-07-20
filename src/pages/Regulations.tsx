@@ -46,7 +46,7 @@ export default function Regulations() {
               Regulamento do Bolão
             </h1>
             <p className="text-emerald-100/80 text-sm sm:text-base font-medium max-w-2xl">
-              Entenda como funciona o Bolão Coxim 2026: divisão de prêmios, prazos inegociáveis, acúmulos para a Seleção Brasileira e regras de homologação.
+              Entenda como funciona o PIXCOXIM: divisão de prêmios, prazos inegociáveis, acúmulos para a Seleção Brasileira e regras de homologação.
             </p>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function Regulations() {
             <h2 className="text-lg font-display font-bold text-slate-800 uppercase tracking-wider">Validade e Prazos</h2>
             <div className="text-slate-600 text-sm leading-relaxed space-y-3">
               <p>
-                A pontualidade é mandatória para garantir a lisura, auditoria e equilíbrio do nosso Bolão Coxim 2026.
+                A pontualidade é mandatória para garantir a lisura, auditoria e equilíbrio do nosso PIXCOXIM.
               </p>
               <p className="border-l-4 border-blue-500 pl-3 py-1 bg-blue-50/50 rounded-r-lg">
                 As apostas e palpites só serão considerados válidos se forem completamente <strong>confirmados até 30 minutos antes do início oficial</strong> de cada jogo.

@@ -6,6 +6,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/f
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Transaction, UserProfile } from '../types';
+import logoImg from '../assets/images/logo.jpg';
 
 interface PixRequest {
   id: string;
@@ -105,11 +106,13 @@ export default function Layout() {
       <header className="bg-emerald-900 shadow-md border-b-2 border-yellow-400 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="bg-yellow-400/10 p-2 rounded-lg group-hover:bg-yellow-400/20 transition-colors border border-yellow-400/20">
-                <Trophy className="h-6 w-6 text-yellow-400" />
-              </div>
-              <span className="font-display font-bold text-xl tracking-tight hidden sm:block text-white">BOLÃO COXIM <span className="text-yellow-400">2026</span></span>
+            <Link to="/" className="relative w-28 sm:w-36 h-16 sm:h-20 flex items-center group z-50">
+              <img 
+                src={logoImg} 
+                alt="PIXCOXIM Logo" 
+                referrerPolicy="no-referrer" 
+                className="h-[100px] w-[100px] sm:h-[130px] sm:w-[130px] object-contain transition-transform duration-200 group-hover:scale-105 absolute left-0 top-1/2 -translate-y-1/2" 
+              />
             </Link>
 
             {profile ? (
@@ -195,7 +198,7 @@ export default function Layout() {
           </div>
           <div className="flex flex-col items-center pt-2">
             <Trophy className="h-5 w-5 text-yellow-400/40 mb-2" />
-            <p className="text-emerald-100/50">&copy; 2026 BOLÃO COXIM 2026. Jogue com responsabilidade.</p>
+            <p className="text-emerald-100/50">&copy; 2026 PIXCOXIM. Jogue com responsabilidade.</p>
           </div>
         </div>
       </footer>

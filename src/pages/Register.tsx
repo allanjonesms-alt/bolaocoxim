@@ -5,6 +5,7 @@ import { doc, setDoc, getDoc, serverTimestamp, collection, query, orderBy, limit
 import { auth, db } from '../lib/firebase';
 import { Trophy } from 'lucide-react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
+import logoImg from '../assets/images/logo.jpg';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -136,11 +137,11 @@ export default function Register() {
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-50 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="flex flex-col items-center mb-6 relative z-10">
-          <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-2xl mb-4 shadow-sm">
-            <Trophy className="h-8 w-8 text-emerald-600" />
+          <div className="h-20 w-20 bg-emerald-50 border border-emerald-100 p-1.5 rounded-2xl mb-4 shadow-sm flex items-center justify-center overflow-hidden">
+            <img src={logoImg} alt="PIXCOXIM Logo" referrerPolicy="no-referrer" className="h-full w-full object-contain rounded-xl" />
           </div>
           <h1 className="text-2xl font-display font-bold text-slate-800 tracking-tight">Criar Conta</h1>
-          <p className="text-slate-500 mt-1 text-center text-sm font-medium">Junte-se ao Bolão Coxim e ganhe prêmios!</p>
+          <p className="text-slate-500 mt-1 text-center text-sm font-medium">Junte-se ao PIXCOXIM e ganhe prêmios!</p>
         </div>
 
         {error && (

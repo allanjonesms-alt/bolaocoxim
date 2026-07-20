@@ -18,6 +18,7 @@ import AllMatches from './pages/AllMatches';
 import AdminPixPremiado from './pages/AdminPixPremiado';
 import AdminMinutoCerto from './pages/AdminMinutoCerto';
 import AdminSorteios from './pages/AdminSorteios';
+import AdminBolao from './pages/AdminBolao';
 import UserMinutoCerto from './pages/UserMinutoCerto';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="admin/pix-premiado" element={<ProtectedRoute adminOnly><AdminPixPremiado /></ProtectedRoute>} />
             <Route path="admin/minuto-certo" element={<ProtectedRoute adminOnly><AdminMinutoCerto /></ProtectedRoute>} />
             <Route path="admin/sorteios" element={<ProtectedRoute adminOnly><AdminSorteios /></ProtectedRoute>} />
+            <Route path="admin/bolao" element={<ProtectedRoute adminOnly><AdminBolao /></ProtectedRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>
